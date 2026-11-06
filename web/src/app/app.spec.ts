@@ -17,6 +17,15 @@ describe('App', () => {
     fixture.detectChanges();
   };
 
+  const eventually = (check: () => void) =>
+    vi.waitFor(
+      () => {
+        fixture.detectChanges();
+        check();
+      },
+      { timeout: 4000 },
+    );
+
   const type = async (selector: string, value: string) => {
     const input = root.querySelector(selector) as HTMLInputElement;
     input.value = value;
@@ -39,7 +48,7 @@ describe('App', () => {
   const alertText = () => root.querySelector('[role="alert"]')?.textContent ?? '';
 
   const flushDashboard = async () => {
-    http.expectOne(`${BASE}/wallets/wallet-demo`).flush({ id: 'wallet-demo', status: 'ACTIVE', balance: 100000, reserved: 0, available: 100000, currency: 'PEN' });
+    await eventually(() => http.expectOne(`${BASE}/wallets/wallet-demo`).flush({ id: 'wallet-demo', status: 'ACTIVE', balance: 100000, reserved: 0, available: 100000, currency: 'PEN' }));
     http.expectOne(`${BASE}/payments?walletId=wallet-demo`).flush([]);
     await tick();
   };
@@ -47,6 +56,17 @@ describe('App', () => {
   const login = async (dni: string, password: string) => {
     await type('input[name="dni"]', dni);
     await type('input[name="password"]', password);
+    await submit();
+  };
+
+  const register = async (number: string, password: string) => {
+    await type('input[name="documentNumber"]', number);
+    await type('input[name="password"]', password);
+    await submit();
+  };
+
+  const completeOtp = async (otp: string) => {
+    await type('input[name="otp"]', otp);
     await submit();
   };
 
@@ -65,45 +85,41 @@ describe('App', () => {
   afterEach(() => http.verify());
 
   describe('registro', () => {
-    it('sin sesión empieza en el registro con tipo de documento DNI y número de documento', () => {
+    it('sin sesión empieza en el registro con tipo de documento, número y contraseña', () => {
       expect(root.textContent).toContain('Regístrate como cliente');
       expect((root.querySelector('select[name="documentType"]') as HTMLSelectElement).value).toBe('DNI');
       expect((root.querySelector('input[name="documentNumber"]') as HTMLInputElement).maxLength).toBe(8);
-      expect(root.querySelector('input[name="password"]')).toBeNull();
+      expect((root.querySelector('input[name="password"]') as HTMLInputElement).type).toBe('password');
     });
 
     it.each([
-      ['', 'Ingresa tu número de documento'],
-      ['12a45678', 'solo admite dígitos'],
-      ['123456789', 'máximo 8 dígitos'],
-    ])('con el número "%s" bloquea el registro', async (number, text) => {
-      await type('input[name="documentNumber"]', number);
-      await submit();
+      ['', 'clave', 'Ingresa tu número de documento'],
+      ['12a45678', 'clave', 'solo admite dígitos'],
+      ['123456789', 'clave', 'máximo 8 dígitos'],
+      ['12345678', '', 'Ingresa tu contraseña'],
+      ['12345678', 'abc', 'al menos 4 caracteres'],
+    ])('con número "%s" y contraseña "%s" bloquea el registro', async (number, password, text) => {
+      await register(number, password);
       expect(alertText()).toContain(text);
       expect(root.querySelector('input[name="otp"]')).toBeNull();
     });
 
     it('un registro válido indica que se envió un OTP de aprobación', async () => {
-      await type('input[name="documentNumber"]', '12345678');
-      await submit();
+      await register('12345678', 'clave');
       expect(root.textContent).toContain('Se ha enviado un OTP de aprobación');
       expect(root.querySelector('input[name="otp"]')).not.toBeNull();
     });
 
     it('un OTP incorrecto no da acceso', async () => {
-      await type('input[name="documentNumber"]', '12345678');
-      await submit();
-      await type('input[name="otp"]', '1111');
-      await submit();
-      expect(alertText()).toContain('OTP no es correcto');
+      await register('12345678', 'clave');
+      await completeOtp('1111');
+      await eventually(() => expect(alertText()).toContain('OTP no es correcto'));
       expect(root.querySelector('.dashboard')).toBeNull();
     });
 
     it('con el OTP 0000 entra al panel de saldo, movimientos y transferencias', async () => {
-      await type('input[name="documentNumber"]', '12345678');
-      await submit();
-      await type('input[name="otp"]', '0000');
-      await submit();
+      await register('12345678', 'clave');
+      await completeOtp('0000');
       await flushDashboard();
       expect(root.textContent).toContain('Saldo disponible');
       expect(root.textContent).toContain('Últimos movimientos');
@@ -113,11 +129,10 @@ describe('App', () => {
       expect(root.textContent).not.toContain('Consola de pruebas');
     });
 
-    it('Volver regresa al formulario de registro', async () => {
-      await type('input[name="documentNumber"]', '12345678');
-      await submit();
+    it('Volver regresa al formulario de registro conservando los datos', async () => {
+      await register('12345678', 'clave');
       await clickText('Volver');
-      expect(root.querySelector('input[name="documentNumber"]')).not.toBeNull();
+      expect((root.querySelector('input[name="documentNumber"]') as HTMLInputElement).value).toBe('12345678');
     });
   });
 
@@ -134,15 +149,15 @@ describe('App', () => {
 
     it('un login vacío o con contraseña incorrecta no da acceso', async () => {
       await submit();
-      expect(alertText()).toContain('Ingresa tu DNI');
+      await eventually(() => expect(alertText()).toContain('Ingresa tu DNI'));
       await login('admin', 'mala');
-      expect(alertText()).toContain('incorrectos');
+      await eventually(() => expect(alertText()).toContain('incorrectos'));
       expect(root.querySelector('.dashboard')).toBeNull();
     });
 
     it('si el cliente no existe muestra "Ups, registrate como nuevo usuario"', async () => {
       await login('12345678', 'cualquiera');
-      expect(alertText()).toBe('Ups, registrate como nuevo usuario');
+      await eventually(() => expect(alertText()).toBe('Ups, registrate como nuevo usuario'));
       expect(root.querySelector('.dashboard')).toBeNull();
     });
 
@@ -167,6 +182,20 @@ describe('App', () => {
       await flushDashboard();
       await clickText('Cerrar sesión');
       expect(root.querySelector('input[name="password"]')).not.toBeNull();
+    });
+
+    it('un cliente registrado entra después con la contraseña que definió', async () => {
+      await clickText('¿Eres nuevo? Regístrate');
+      await register('12345678', 'clave');
+      await completeOtp('0000');
+      await flushDashboard();
+      await clickText('Cerrar sesión');
+
+      await login('12345678', 'incorrecta');
+      await eventually(() => expect(alertText()).toContain('incorrectos'));
+      await login('12345678', 'clave');
+      await flushDashboard();
+      expect(root.textContent).toContain('Cliente 12345678');
     });
   });
 });

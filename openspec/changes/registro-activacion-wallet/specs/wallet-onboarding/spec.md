@@ -148,12 +148,12 @@ El sistema DEBE producir una salida analítica de onboarding con el conteo mensu
 
 ### Requirement: Registro de cliente con OTP previo al inicio de sesión
 
-El sistema DEBE mostrar, antes del inicio de sesión, una vista de registro de cliente con el tipo de documento `DNI` y un número de documento de solo dígitos y como máximo 8. Al completar el registro DEBE indicar que se ha enviado un OTP de aprobación (dato dummy `0000`) y, al validarlo, DEBE dar acceso al panel de saldo, movimientos y transferencias.
+El sistema DEBE mostrar, antes del inicio de sesión, una vista de registro de cliente con el tipo de documento `DNI`, un número de documento de solo dígitos y como máximo 8, y una contraseña de al menos 4 caracteres. Al completar el registro DEBE indicar que se ha enviado un OTP de aprobación (dato dummy `0000`) y, al validarlo, DEBE guardar las credenciales del cliente (sin guardar la contraseña en texto plano) y dar acceso al panel de saldo, movimientos y transferencias.
 
-#### Scenario: Validación del número de documento
+#### Scenario: Validación de los datos de registro
 
 - **GIVEN** un usuario en el formulario de registro con el tipo de documento `DNI`
-- **WHEN** deja el número vacío, ingresa caracteres que no son dígitos o ingresa más de 8 dígitos
+- **WHEN** deja el número o la contraseña vacíos, ingresa un número con caracteres que no son dígitos o con más de 8 dígitos, una contraseña de menos de 4 caracteres, o un DNI ya registrado
 - **THEN** el registro se bloquea
 - **AND** se muestra un mensaje que indica qué corregir
 
@@ -180,7 +180,7 @@ El sistema DEBE mostrar, antes del inicio de sesión, una vista de registro de c
 
 ### Requirement: Inicio de sesión con DNI y contraseña
 
-El sistema DEBE ofrecer un inicio de sesión responsive con DNI y contraseña. El cliente existente de la demo es el usuario dummy `admin` con contraseña `admin`. Si el DNI no corresponde a un cliente existente, DEBE mostrar el mensaje "Ups, registrate como nuevo usuario".
+El sistema DEBE ofrecer un inicio de sesión responsive con DNI y contraseña. Los clientes existentes son el usuario dummy `admin` con contraseña `admin` y los clientes registrados con su contraseña. Si el DNI no corresponde a un cliente existente, DEBE mostrar el mensaje "Ups, registrate como nuevo usuario".
 
 #### Scenario: Acceso del usuario dummy
 
@@ -192,9 +192,16 @@ El sistema DEBE ofrecer un inicio de sesión responsive con DNI y contraseña. E
 #### Scenario: Cliente inexistente
 
 - **GIVEN** un usuario en el inicio de sesión
-- **WHEN** ingresa un DNI distinto de `admin`
+- **WHEN** ingresa un DNI que no es `admin` ni está registrado
 - **THEN** no se da acceso
 - **AND** se muestra "Ups, registrate como nuevo usuario" con acceso al registro
+
+#### Scenario: Cliente registrado
+
+- **GIVEN** un cliente que completó el registro con DNI, contraseña y OTP
+- **WHEN** inicia sesión con su DNI y su contraseña
+- **THEN** se muestra el panel de saldo, movimientos y transferencias, sin consola de pruebas
+- **AND** con una contraseña incorrecta no se da acceso
 
 #### Scenario: Datos faltantes o contraseña incorrecta
 
@@ -326,7 +333,7 @@ El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejec
 - Los casos de soporte se cierran únicamente mediante la decisión KYC; no hay endpoint para editarlos.
 - Front Angular (`web/`) conforme a `docs/GOOD_PRACTICES.md`: tipado estricto sin `any`, interfaces para cada request y response, llamadas HTTP solo en servicios (no en componentes), URL base en `environment.ts`, sesión centralizada en un único servicio, sin `[innerHTML]` con datos dinámicos y mensajes de error que no exponen detalles internos.
 - La consola es una herramienta de prueba y demostración: no valida documentos reales ni sustituye la analítica de producción.
-- Credenciales, OTP y código de validación son dummy y se comprueban en el cliente (`admin`/`admin`, OTP `0000`): no constituyen autenticación real y no deben usarse fuera de la demo.
+- Credenciales, OTP y código de validación son dummy y se comprueban en el cliente (`admin`/`admin`, OTP `0000`): no constituyen autenticación real y no deben usarse fuera de la demo. Los clientes registrados se guardan en el navegador con la contraseña derivada (PBKDF2 con sal), nunca en texto plano.
 - Los pagos y QR usan el contrato W2/W3 del mock (`POST /payments` con `Idempotency-Key`, `POST /payments/{id}/resolve`, `GET /payments`, `POST /qrs`, `POST /qrs/resolve`) sobre `wallet-demo`, `contact-demo` y `merchant-demo`; los movimientos no traen fecha.
 - El alcance excluye recarga, validación de acceso en transporte, conciliación, reversos, reglas de KYC reales (se usa solo el KYC simulado) y despliegue multipaís.
 
@@ -355,5 +362,5 @@ El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejec
 - ¿Qué significa "usuario activo" para el MAU y de qué fuente proviene el gasto de adquisición para el CAC?
 - ¿Se mide la mediana sobre el 100% de la cohorte MVP o sobre una muestra?
 - ¿Se confirma el listado de contratos protegidos derivado del repositorio?
-- ¿Los clientes registrados con DNI y OTP deben poder iniciar sesión más adelante (el registro no pide contraseña) y tener su propia wallet en lugar de `wallet-demo`?
-- ¿El DNI debe tener exactamente 8 dígitos o basta con "máximo 8"?
+- ¿Cada cliente registrado debe tener su propia wallet en lugar de `wallet-demo`?
+- ¿El DNI debe tener exactamente 8 dígitos o basta con "máximo 8"? ¿Qué reglas de contraseña aplican además del mínimo de 4 caracteres?

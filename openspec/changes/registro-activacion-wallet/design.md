@@ -66,10 +66,10 @@ No se registra ADR adicional: no hay otra decisión significativa tomada.
 
 ### Decision: Acceso, panel y transferencias en la web (dummy)
 
-- Opción elegida: la web abre con el registro de cliente (tipo `DNI`, número de hasta 8 dígitos, OTP dummy `0000`); el login (`admin`/`admin`, cliente inexistente: "Ups, registrate como nuevo usuario") es la segunda vista. Tras acceder se muestra el panel con saldo (`GET /wallets/wallet-demo`), últimos 5 movimientos (`GET /payments?walletId=wallet-demo`) y transferencias por contacto y QR. El onboarding KYC, la consola de servicios, la configuración y los eventos pasan a la "Consola de pruebas", solo para `admin`. Un `AuthService` centraliza la sesión y `MockApiService` suma `createPayment` (con `Idempotency-Key`), `resolvePayment`, `listPayments`, `createQr` y `resolveQr`.
+- Opción elegida: la web abre con el registro de cliente (tipo `DNI`, número de hasta 8 dígitos, contraseña de al menos 4 caracteres, OTP dummy `0000`); el login (`admin`/`admin`, clientes registrados, cliente inexistente: "Ups, registrate como nuevo usuario") es la segunda vista. Tras acceder se muestra el panel con saldo (`GET /wallets/wallet-demo`), últimos 5 movimientos (`GET /payments?walletId=wallet-demo`) y transferencias por contacto y QR. El onboarding KYC, la consola de servicios, la configuración y los eventos pasan a la "Consola de pruebas", solo para `admin`. Un `AuthService` centraliza la sesión y `MockApiService` suma `createPayment` (con `Idempotency-Key`), `resolvePayment`, `listPayments`, `createQr` y `resolveQr`.
 - Motivo: pedido del usuario tras revisar la vista; reutiliza los servicios y el contrato del mock sin API propia.
 - Alternativas consideradas: mantener solo la consola de servicios (descartada por decisión humana).
-- Consecuencias: credenciales, OTP y código de validación son dummy en el cliente y no son autenticación real; todos los clientes comparten `wallet-demo`; un cliente registrado no puede volver a entrar por el login porque el registro no pide contraseña.
+- Consecuencias: credenciales dummy, OTP y código de validación son dummy en el cliente y no son autenticación real; los clientes registrados se guardan en `localStorage` con la contraseña derivada (PBKDF2-SHA256 con sal, nunca en texto plano) y pueden iniciar sesión después; todos los clientes comparten `wallet-demo`.
 
 ### Contratos nuevos (borrador)
 
@@ -135,4 +135,4 @@ Cada cambio va en un PR separado y se revierte por PR. El generador no ejecuta m
 1. ¿Se editan las instrucciones del Arquitecto o solo se alimenta el feature?
 2. Preguntas de la spec: frontera de eventos de duración; pasos adicionales al KYC simulado; espera de una wallet `PENDING`; persistencia de eventos y URL base cloud/local; CORS del mock; definición de "usuario activo" y fuente del gasto de adquisición; muestra de la mediana.
 3. ¿Se confirma el listado de contratos protegidos?
-4. ¿Los clientes registrados deben poder iniciar sesión después y tener su propia wallet? ¿El DNI debe tener exactamente 8 dígitos?
+4. ¿Cada cliente registrado debe tener su propia wallet? ¿El DNI debe tener exactamente 8 dígitos y qué reglas de contraseña aplican además del mínimo de 4 caracteres?

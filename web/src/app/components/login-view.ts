@@ -54,8 +54,8 @@ export class LoginView {
     return (event.target as HTMLInputElement).value;
   }
 
-  protected submit(event: Event): void {
+  protected async submit(event: Event): Promise<void> {
     event.preventDefault();
-    this.error.set(this.auth.login(this.dni(), this.password()));
+    this.error.set(await this.auth.login(this.dni(), this.password()));
   }
 }

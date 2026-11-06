@@ -27,6 +27,16 @@ import { AuthService } from '../services/auth.service';
                 (input)="documentNumber.set(valueOf($event))"
               />
             </label>
+            <label class="field">
+              <span>Contraseña</span>
+              <input
+                type="password"
+                name="password"
+                autocomplete="new-password"
+                [value]="password()"
+                (input)="password.set(valueOf($event))"
+              />
+            </label>
             @if (error()) {
               <p class="error" role="alert">{{ error() }}</p>
             }
@@ -55,7 +65,7 @@ import { AuthService } from '../services/auth.service';
             @if (error()) {
               <p class="error" role="alert">{{ error() }}</p>
             }
-            <button type="submit" class="btn btn-dark">VALIDAR OTP</button>
+            <button type="submit" class="btn btn-dark" [disabled]="busy()">VALIDAR OTP</button>
           </form>
           <button type="button" class="btn btn-link" (click)="back()">Volver</button>
         }
@@ -71,8 +81,10 @@ export class RegisterView {
   protected readonly stage = signal<'form' | 'otp'>('form');
   protected readonly documentType = signal('DNI');
   protected readonly documentNumber = signal('');
+  protected readonly password = signal('');
   protected readonly otp = signal('');
   protected readonly error = signal<string | null>(null);
+  protected readonly busy = signal(false);
 
   protected valueOf(event: Event): string {
     return (event.target as HTMLInputElement | HTMLSelectElement).value;
@@ -80,7 +92,7 @@ export class RegisterView {
 
   protected submitForm(event: Event): void {
     event.preventDefault();
-    const problem = this.auth.validateRegistration(this.documentType(), this.documentNumber());
+    const problem = this.auth.validateRegistration(this.documentType(), this.documentNumber(), this.password());
     this.error.set(problem);
     if (problem === null) {
       this.otp.set('');
@@ -88,9 +100,11 @@ export class RegisterView {
     }
   }
 
-  protected submitOtp(event: Event): void {
+  protected async submitOtp(event: Event): Promise<void> {
     event.preventDefault();
-    this.error.set(this.auth.confirmOtp(this.documentNumber(), this.otp()));
+    this.busy.set(true);
+    this.error.set(await this.auth.confirmOtp(this.documentNumber(), this.password(), this.otp()));
+    this.busy.set(false);
   }
 
   protected back(): void {
