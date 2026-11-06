@@ -38,7 +38,7 @@ class PublishTests(unittest.TestCase):
 
     def test_target_repo_uses_owner_from_env(self):
         with patch.dict("os.environ", {"GITHUB_OWNER": "acme", "PR_REPO": ""}):
-            self.assertEqual(publish_pr.target_repo(), "acme/ai-labs")
+            self.assertEqual(publish_pr.target_repo(), "acme/wallet-app-g6")
         with patch.dict("os.environ", {"GITHUB_OWNER": "<OWNER>"}):
             self.assertIsNone(publish_pr.target_repo())
 
@@ -50,8 +50,12 @@ class PublishTests(unittest.TestCase):
         checkpoint = {"steps": {}}
         with patch.object(app, "OUTPUT_DIR", self.out), \
                 patch.object(app, "CHECKPOINT_FILE", self.out / ".checkpoint.json"), \
-                patch.object(publish_pr, "target_repo", return_value="acme/ai-labs"), \
-                patch.object(publish_pr, "open_pr", return_value="https://github.com/acme/ai-labs/pull/7") as opened, \
+                patch.object(publish_pr, "target_repo", return_value="acme/wallet-app-g6"), \
+<<<<<<< HEAD
+                patch.object(publish_pr, "open_pr", return_value="https://github.com/acme/wallet-app-g6/pull/7") as opened, \
+=======
+                patch.object(publish_pr, "open_pr", return_value="https://github.com/acme/wallet-app-g6/pull/99") as opened, \
+>>>>>>> main
                 patch("builtins.input", return_value=answer), \
                 contextlib.redirect_stdout(io.StringIO()):
             app.publish_step(checkpoint, FEATURE, 12, STEPS, ["api/app/tasks.py"], "VEREDICTO: APROBADO")
@@ -66,7 +70,11 @@ class PublishTests(unittest.TestCase):
         checkpoint, opened = self.run_step("s")
         opened.assert_called_once()
         self.assertEqual(opened.call_args.args[2], 12)
-        self.assertEqual(checkpoint["pr"]["url"], "https://github.com/acme/ai-labs/pull/7")
+<<<<<<< HEAD
+        self.assertEqual(checkpoint["pr"]["url"], "https://github.com/acme/wallet-app-g6/pull/7")
+=======
+        self.assertEqual(checkpoint["pr"]["url"], "https://github.com/acme/wallet-app-g6/pull/99")
+>>>>>>> main
 
 
 if __name__ == "__main__":

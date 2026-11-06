@@ -64,7 +64,7 @@ from crewai import Crew, Process
 from lab_copilot import runtime as copilot_runtime
 
 from crew.workflow import build_tasks, include_data, workflow_steps
-from crew import publish_pr
+from crew import publish_pr, openspec_source
 
 # ── MCP clients ────────────────────────────────────────────────────
 from mcp_projects import (
@@ -861,9 +861,8 @@ def build_context_note(approved_outputs: dict) -> str:
 # MAIN
 # ═══════════════════════════════════════════════════════════════════
 
-def main():
-    with_data = include_data()
-    steps = workflow_steps(with_data)
+def select_feature_mcp() -> tuple[dict, object]:
+    """Elige proyecto y feature del backlog vía MCP."""
     # ── MCP Proyectos: descubrir tools ────────────────────────────────
     print("\n[MCP Proyectos] Autenticando...")
     _proj_tools = proj_tools()
@@ -917,6 +916,51 @@ def main():
     feature = get_feature_from_item(selected_item)
     print(f"\n[MCP Proyectos] Feature cargado: {feature['title']}")
     print(f"[MCP Proyectos] Criterios de aceptación: {feature['acceptance_criteria']}")
+    return feature, selected_item.get("number")
+
+
+def select_feature_openspec() -> tuple[dict, object]:
+    """Elige un change de openspec/changes/ y lo convierte en feature."""
+    changes = openspec_source.list_changes()
+    if not changes:
+        print("[OpenSpec] ✗ No hay changes activos en openspec/changes/.")
+        raise SystemExit(1)
+    if len(changes) == 1:
+        name = changes[0]
+        print(f"\n[OpenSpec] Change activo: {name}")
+    else:
+        print("\n[OpenSpec] Changes disponibles:")
+        for i, change in enumerate(changes, 1):
+            print(f"  {i}. {change}")
+        while True:
+            sel = ask(f"\nSelecciona el número de change [1-{len(changes)}]: ")
+            if sel.isdigit() and 1 <= int(sel) <= len(changes):
+                name = changes[int(sel) - 1]
+                break
+            print("  ✗ Entrada inválida.")
+    try:
+        feature = openspec_source.load_feature(name)
+    except openspec_source.OpenSpecError as error:
+        print(f"[OpenSpec] ✗ {error}")
+        raise SystemExit(1)
+    print(f"[OpenSpec] Feature cargado: {feature['title']}")
+    print(f"[OpenSpec] Criterios de aceptación ({len(feature['acceptance_criteria'])}):")
+    for criterion in feature["acceptance_criteria"]:
+        print(f"  · {criterion}")
+    return feature, feature.get("issue_number")
+
+
+def select_feature() -> tuple[dict, object]:
+    source = os.getenv("FEATURE_SOURCE", "mcp").strip().lower()
+    if source not in ("mcp", "openspec"):
+        raise ValueError("FEATURE_SOURCE debe ser mcp u openspec")
+    return select_feature_openspec() if source == "openspec" else select_feature_mcp()
+
+
+def main():
+    with_data = include_data()
+    steps = workflow_steps(with_data)
+    feature, issue_number = select_feature()
 
     # ── Cargar checkpoint ─────────────────────────────────────────────
     checkpoint  = load_checkpoint()
@@ -1059,11 +1103,11 @@ def main():
     print("\nVEREDICTO del Chapter (extracto):")
     print(chapter_text[-500:] if len(chapter_text) > 500 else chapter_text)
 
-    publish_step(checkpoint, feature, selected_item.get("number"), steps, generated_files, chapter_text)
+    publish_step(checkpoint, feature, issue_number, steps, generated_files, chapter_text)
 
 
 def publish_step(checkpoint: dict, feature: dict, issue_number, steps, generated_files, chapter_text) -> None:
-    """Último paso: PR en borrador a <GITHUB_OWNER>/ai-labs, solo con aprobación humana."""
+    """Último paso: PR en borrador a <GITHUB_OWNER>/wallet-app-g6, solo con aprobación humana."""
     repo = publish_pr.target_repo()
     print("\n" + "─" * 60)
     print("▶ PASO: Pull request")
@@ -1072,7 +1116,7 @@ def publish_step(checkpoint: dict, feature: dict, issue_number, steps, generated
         print(f"✅ PR ya abierto en una ejecución anterior: {checkpoint['pr']['url']}")
         return
     if not repo:
-        print("  ⚠ Define GITHUB_OWNER en .env para abrir el PR en <owner>/ai-labs. Paso omitido.")
+        print("  ⚠ Define GITHUB_OWNER en .env para abrir el PR en <owner>/wallet-app-g6. Paso omitido.")
         return
 
     slug = publish_pr.slugify(feature["title"])
