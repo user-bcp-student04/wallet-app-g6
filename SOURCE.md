@@ -1,7 +1,7 @@
 # Origen
 
 Este repositorio parte de `dia-04/s1_crewai`
-de [bcp-ai-labs](https://github.com/NTTData-Academy/bcp-ai-labs/tree/ee25bb8da0c69df1537efcc40b2fd86573092176/dia-04/s1_crewai),
+de [wallet-app-g6](https://github.com/NTTData-Academy/wallet-app-g6/tree/ee25bb8da0c69df1537efcc40b2fd86573092176/dia-04/s1_crewai),
 commit `ee25bb8da0c69df1537efcc40b2fd86573092176`.
 
 La copia conserva los scripts, configuración y dependencias de la sesión.
