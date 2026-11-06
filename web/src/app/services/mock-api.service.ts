@@ -83,7 +83,8 @@ export class MockApiService {
       });
     }
     const started = performance.now();
-    const headers = new HttpHeaders({ 'X-Mock-Latency-Ms': String(latency) });
+    // El mock en nube no permite X-Mock-Latency-Ms en el preflight CORS: solo se envía si se pide una demora.
+    const headers = latency > 0 ? new HttpHeaders({ 'X-Mock-Latency-Ms': String(latency) }) : new HttpHeaders();
     return this.http
       .request<T>(method, this.session.baseUrl() + path, { body: requestBody, headers, observe: 'response' })
       .pipe(

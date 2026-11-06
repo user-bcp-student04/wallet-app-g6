@@ -19,7 +19,7 @@
   - URL del grupo: `https://bcp-wallet-mock.yefri.workers.dev/groups/6`. `GET /health` -> `200 {"status":"ok","environment":"cloud-mock","storage":"sqlite",...}` (2026-11-06). La URL local `http://127.0.0.1:8787` rechaza la conexión.
   - CORS del mock en nube: `Access-Control-Allow-Origin: *`, métodos `GET, POST, OPTIONS`, `OPTIONS` -> `204`.
   - Hallazgo: `Access-Control-Allow-Headers` solo permite `Content-Type, Idempotency-Key`; un navegador bloqueará `X-Mock-Latency-Ms` (exigido por la spec) en el preflight. Candidato a backlog: proxy de desarrollo solo para la latencia, o pedir al mock que la permita. No se resuelve aquí.
-  - `environment.ts` no existe hasta que se genere `web/` (issue #8): esa URL será su valor por defecto en 2.2.
+  - `environment.ts` ya existe en `web/` con esa URL del grupo como valor por defecto. Mitigación provisional del hallazgo CORS: `X-Mock-Latency-Ms` solo se envía si la latencia es mayor que 0, así el uso por defecto no dispara el preflight bloqueado; con latencia > 0 el navegador seguirá bloqueándolo hasta resolver el candidato a backlog.
 
 ## 2. Generación en el repo destino
 
@@ -49,10 +49,10 @@ Cobertura básica por endpoint (camino feliz y un camino de error), según la ta
 - [x] 3.9 Manejador de errores común: `400`, `404`, `409`, `413`, `429` y `503` con mensaje accionable
 - [x] 3.10 Pasos visibles, bloqueo con dato faltante e inválido, y estado activo tras onboarding exitoso frente a incompleto, `PENDING` o `REJECTED`
 - [x] 3.11 Eventos (completo y abandonado) y cálculo de mediana
-  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 44 pruebas pasadas.
+  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 45 pruebas pasadas; `npx ng build` sin errores.
 - [ ] 3.12 Adjuntar al PR la salida real de las pruebas ejecutadas por una persona
 
 ## 4. Validación
 
-- [ ] 4.1 Ejecutar `python tools/verify.py` y registrar el resultado
-  - Resultado (2026-11-06) sobre `main` + `web/`: falla (`Ran 20 tests`, `errors=1`) por marcadores de conflicto de merge en `tests/test_publish.py` (líneas 54-58 y 73-77), ya presentes en `main` desde `e311d2e`. Hallazgo secundario fuera del alcance; las otras 20 pruebas pasan.
+- [x] 4.1 Ejecutar `python tools/verify.py` y registrar el resultado
+  - Resultado (2026-11-06) tras integrar `origin/main` (que corrige el conflicto de `tests/test_publish.py`): `Ran 24 tests ... OK` y `All pipeline checks passed. No model or external service was called.`

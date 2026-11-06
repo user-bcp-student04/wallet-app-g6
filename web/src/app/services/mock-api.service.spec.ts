@@ -2,12 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { ApiResult } from '../models/mock.models';
 import { describeError } from './error-messages';
 import { MockApiService } from './mock-api.service';
 import { SessionService } from './session.service';
 
-const BASE = 'http://127.0.0.1:8787';
+const BASE = environment.mockBaseUrl;
 
 function collect<T>(source: Observable<ApiResult<T>>): { result: ApiResult<T> | null } {
   const box: { result: ApiResult<T> | null } = { result: null };
@@ -39,6 +40,13 @@ describe('MockApiService', () => {
       req.flush({ status: 'ok', storage: 'memory' });
       expect(box.result?.status).toBe(200);
       expect(box.result?.body?.status).toBe('ok');
+    });
+
+    it('no envía X-Mock-Latency-Ms cuando la latencia es 0 (evita el preflight CORS)', () => {
+      collect(api.health());
+      const req = http.expectOne(`${BASE}/health`);
+      expect(req.request.headers.has('X-Mock-Latency-Ms')).toBe(false);
+      req.flush({ status: 'ok', storage: 'memory' });
     });
 
     it('bloquea una latencia fuera de rango sin llamar a la API', () => {

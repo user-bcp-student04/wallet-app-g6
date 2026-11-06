@@ -1,11 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { environment } from '../../environments/environment';
 import { OnboardingEventsService } from '../services/onboarding-events.service';
 import { SessionService } from '../services/session.service';
 import { ServiceConsole } from './service-console';
 
-const BASE = 'http://127.0.0.1:8787';
+const BASE = environment.mockBaseUrl;
 
 describe('ServiceConsole', () => {
   let fixture: ComponentFixture<ServiceConsole>;
