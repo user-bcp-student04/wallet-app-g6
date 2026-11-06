@@ -1,0 +1,23 @@
+<!-- src/app/app.component.html -->
+<a class="skip-link" href="#contenido" (click)="skipToContent($event)">Saltar al contenido</a>
+
+<header class="app-header">
+  <p><strong>Wallet · Onboarding de pruebas</strong></p>
+  @if (session.isIdentified()) {
+    <nav aria-label="Principal">
+      <ul>
+        <li><a routerLink="/onboarding" routerLinkActive="active" ariaCurrentWhenActive="page">Onboarding</a></li>
+        <li><a routerLink="/pagos" routerLinkActive="active" ariaCurrentWhenActive="page">Pagos de bajo monto</a></li>
+        <li><a routerLink="/consola" routerLinkActive="active" ariaCurrentWhenActive="page">Consola de servicios</a></li>
+      </ul>
+    </nav>
+    <p>
+      Usuario: <strong>{{ session.ownerId() }}</strong>
+      <button type="button" class="btn btn-link" (click)="changeOwner()">Cambiar usuario</button>
+    </p>
+  }
+</header>
+
+<main id="contenido" tabindex="-1">
+  <router-outlet />
+</main>
