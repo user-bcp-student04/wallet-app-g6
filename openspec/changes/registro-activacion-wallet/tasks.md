@@ -4,11 +4,22 @@
   - Verificado el 2026-11-06: las tres variables están definidas en `.env`, que está ignorado por git y no se versiona.
 - [x] 1.2 Ejecutar `python tools/verify.py` en `wallet-app-g6` y registrar la línea base
   - Línea base (2026-11-06, Python 3.13.15, crewai 1.15.36): `Ran 21 tests ... OK` y `All pipeline checks passed. No model or external service was called.`
-- [ ] 1.3 Cerrar las preguntas bloqueantes de la spec (frontera de eventos, pasos adicionales al KYC simulado, persistencia de eventos, CORS del mock, usuario activo, fuente de gasto de adquisición)
-  - Cerrada: persistencia de eventos = almacenamiento local del navegador, provisional (según `design.md`); no sirve para MAU y CAC reales.
-  - Siguen abiertas: frontera de eventos de duración, pasos adicionales al KYC simulado, CORS del mock, usuario activo, fuente de gasto de adquisición (y espera de `PENDING`, muestra de la mediana).
-- [ ] 1.4 Verificar que el mock W1 responde (`GET /health`) en la URL local o del grupo y fijarla en `environment.ts`
-  - Pendiente: `GET http://127.0.0.1:8787/health` expiró (2026-11-06) porque el mock no está en ejecución, y `environment.ts` no existe hasta que se genere `web/` (issue #8).
+- [x] 1.3 Cerrar las preguntas bloqueantes de la spec (frontera de eventos, pasos adicionales al KYC simulado, persistencia de eventos, CORS del mock, usuario activo, fuente de gasto de adquisición)
+  - Decisiones humanas (2026-11-06):
+    - Persistencia de eventos: almacenamiento local del navegador, provisional; no sirve para MAU y CAC reales.
+    - Frontera de duración: `STARTED` al abrir el flujo guiado hasta `CLOSED` en un estado final (`ACTIVE`, `REJECTED`) o abandono.
+    - Datos adicionales al KYC simulado: ninguno; solo `documentType`, `document` (`TEST-`) y escenario.
+    - Espera de `PENDING`: mensaje de revisión pendiente; ese tiempo no cuenta en la duración y el evento se cierra en `PENDING`.
+    - CORS: sin proxy por ahora; usar proxy de desarrollo solo si falla.
+    - Usuario activo (MAU): wallet en estado `ACTIVE` tras onboarding exitoso en el mes.
+    - Gasto de adquisición (CAC): sin fuente definida; la salida analítica recibe el gasto como parámetro de entrada manual.
+    - Muestra de la mediana: 100% de la cohorte MVP.
+  - Pendiente: reflejar estas decisiones en la spec (`openspec-update-change`); la lista de preguntas abiertas de `spec.md` sigue sin actualizar.
+- [x] 1.4 Verificar que el mock W1 responde (`GET /health`) en la URL local o del grupo y fijarla en `environment.ts`
+  - URL del grupo: `https://bcp-wallet-mock.yefri.workers.dev/groups/6`. `GET /health` -> `200 {"status":"ok","environment":"cloud-mock","storage":"sqlite",...}` (2026-11-06). La URL local `http://127.0.0.1:8787` rechaza la conexión.
+  - CORS del mock en nube: `Access-Control-Allow-Origin: *`, métodos `GET, POST, OPTIONS`, `OPTIONS` -> `204`.
+  - Hallazgo: `Access-Control-Allow-Headers` solo permite `Content-Type, Idempotency-Key`; un navegador bloqueará `X-Mock-Latency-Ms` (exigido por la spec) en el preflight. Candidato a backlog: proxy de desarrollo solo para la latencia, o pedir al mock que la permita. No se resuelve aquí.
+  - `environment.ts` no existe hasta que se genere `web/` (issue #8): esa URL será su valor por defecto en 2.2.
 
 ## 2. Generación en el repo destino
 
