@@ -6,6 +6,72 @@ Documentación de la épica definida en [peru-wallet-mvp.sp.md](peru-wallet-mvp.
 
 Lanzar un MVP de wallet en Perú que permita pagar y acceder al transporte público con un solo medio de pago, ya sea por contacto o por QR. Busca reducir la fricción en checkout y acelerar el onboarding, manteniendo la confianza del usuario con confirmaciones claras, manejo confiable de estados y límites alineados a cumplimiento.
 
+## Arquitectura del proyecto
+
+La definición se hace con **OpenSpec** (SDD) y la implementación con **CrewAI** (agentes con aprobación humana en cada paso).
+
+```mermaid
+flowchart TD
+    subgraph DEF["Definición - OpenSpec"]
+        EPIC["Épica e historias<br/>README.md, md-hacktaton/*.md"]
+        OPSX["Prompts opsx-* y skills<br/>.github/prompts, .github/skills"]
+        subgraph CHG["openspec/changes/nombre-del-change"]
+            PROP["proposal.md"]
+            DES["design.md"]
+            SPEC["specs/*/spec.md"]
+            TASKS["tasks.md"]
+        end
+        CFG["openspec/config.yaml<br/>reglas por artefacto"]
+        EPIC --> OPSX
+        OPSX -->|"propose / update"| CHG
+        CFG -.->|"guía"| CHG
+    end
+
+    subgraph SRC["Origen del feature - FEATURE_SOURCE"]
+        OSRC["crew/openspec_source.py<br/>openspec"]
+        MCPC["mcp_projects.py<br/>mcp"]
+        MCPS["MCP local :8081"]
+        GH["GitHub Projects e Issues"]
+        MCPC --> MCPS --> GH
+    end
+
+    subgraph IMP["Implementación - CrewAI"]
+        MAIN["main.py<br/>orquestador HITL y checkpoint"]
+        subgraph AG["agents/ en secuencia"]
+            ARQ["Arquitecto"] --> DAT["Datos<br/>opcional"] --> BE["Backend"] --> FE["Frontend"] --> TST["Pruebas"] --> SEC["Seguridad"] --> CH["Chapter<br/>veredicto"]
+        end
+        LLM["crew/llm_config.py<br/>lab_copilot/runtime.py"]
+        COP["GitHub Copilot SDK"]
+        HUMAN{{"Aprobación humana<br/>s / n / r"}}
+        MAIN --> AG
+        AG <--> LLM <--> COP
+        AG --> HUMAN
+        HUMAN -->|"aprobado"| CKPT[("output/.checkpoint.json")]
+    end
+
+    subgraph OUT["Artefactos generados - output/"]
+        OSPEC["specs/*.md"]
+        OAPI["api/ FastAPI y tests"]
+        OFE["frontend-angular/"]
+        ODB["db/*.sql"]
+    end
+
+    subgraph QA["Verificación y entrega"]
+        VER["tools/verify.py<br/>GitHub Actions verify.yml"]
+        PR["crew/publish_pr.py<br/>PR borrador en ai-labs"]
+    end
+
+    CHG --> OSRC
+    OSRC -->|"title, description, criterios"| MAIN
+    GH --> MCPC
+    MCPC -->|"alternativa"| MAIN
+    HUMAN --> OUT
+    OUT --> VER
+    CH --> PR
+    OUT --> PR
+    PR -.->|"openspec archive y sync"| CHG
+```
+
 ## Público objetivo
 
 - **Empresas de transporte público**: tren, metropolitano y corredores auxiliares.
