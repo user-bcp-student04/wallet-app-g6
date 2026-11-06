@@ -8,7 +8,13 @@ import {
   Kyc,
   KycRequest,
   MockError,
+  Payment,
+  PaymentRequest,
+  PendingResolution,
+  Qr,
+  QrRequest,
   Reset,
+  ResolvedQr,
   Scenarios,
   SupportCase,
   Wallet,
@@ -68,7 +74,32 @@ export class MockApiService {
     return this.execute<Reset>('POST', '/control/reset');
   }
 
-  private execute<T>(method: 'GET' | 'POST', path: string, requestBody?: unknown): Observable<ApiResult<T>> {
+  createPayment(request: PaymentRequest, idempotencyKey: string): Observable<ApiResult<Payment>> {
+    return this.execute<Payment>('POST', '/payments', request, { 'Idempotency-Key': idempotencyKey });
+  }
+
+  resolvePayment(id: string): Observable<ApiResult<Payment | PendingResolution>> {
+    return this.execute<Payment | PendingResolution>('POST', `/payments/${encodeURIComponent(id)}/resolve`, {});
+  }
+
+  listPayments(walletId: string): Observable<ApiResult<Payment[]>> {
+    return this.execute<Payment[]>('GET', `/payments?walletId=${encodeURIComponent(walletId)}`);
+  }
+
+  createQr(request: QrRequest): Observable<ApiResult<Qr>> {
+    return this.execute<Qr>('POST', '/qrs', request);
+  }
+
+  resolveQr(payload: string): Observable<ApiResult<ResolvedQr>> {
+    return this.execute<ResolvedQr>('POST', '/qrs/resolve', { payload });
+  }
+
+  private execute<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    requestBody?: unknown,
+    extraHeaders: Record<string, string> = {},
+  ): Observable<ApiResult<T>> {
     const base = { method, path, requestBody: requestBody ?? null };
     const latency = this.session.latencyMs();
     if (latency === null) {
@@ -84,7 +115,9 @@ export class MockApiService {
     }
     const started = performance.now();
     // El mock en nube no permite X-Mock-Latency-Ms en el preflight CORS: solo se envía si se pide una demora.
-    const headers = latency > 0 ? new HttpHeaders({ 'X-Mock-Latency-Ms': String(latency) }) : new HttpHeaders();
+    const headers = new HttpHeaders(
+      latency > 0 ? { ...extraHeaders, 'X-Mock-Latency-Ms': String(latency) } : extraHeaders,
+    );
     return this.http
       .request<T>(method, this.session.baseUrl() + path, { body: requestBody, headers, observe: 'response' })
       .pipe(

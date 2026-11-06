@@ -1,1 +1,415 @@
-/* Estilos globales en app.css */
+:root {
+  --purple: #6b1f80;
+  --purple-dark: #4d1560;
+  --teal: #12c3b0;
+  --teal-dark: #0e9e8e;
+  --dark: #1b2430;
+  --bg: #f3f1f6;
+  --border: #dcd7e3;
+  --danger: #b00020;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--dark);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.4;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.75rem;
+}
+
+.content,
+.login {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Barra superior */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--purple);
+  color: #fff;
+}
+
+.topbar .brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.topbar .btn-link {
+  color: #fff;
+}
+
+.topbar .btn-link.current {
+  border-bottom: 2px solid var(--teal);
+}
+
+.topbar .user {
+  opacity: 0.85;
+}
+
+/* Tarjetas */
+.card,
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Login */
+.login {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Formularios */
+.field,
+label {
+  display: block;
+  margin: 0.75rem 0;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+input[type='text'],
+input[type='password'],
+select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+input:focus-visible,
+button:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 1px;
+}
+
+/* Botones */
+.btn,
+button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn-dark {
+  width: 100%;
+  background: var(--dark);
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary {
+  background: var(--teal);
+  color: #04332e;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--teal-dark);
+  color: #fff;
+}
+
+.btn-outline {
+  background: #fff;
+  border-color: var(--teal);
+  color: var(--teal-dark);
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--purple);
+  text-decoration: underline;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.hint {
+  color: #5d566a;
+  font-size: 0.9rem;
+}
+
+/* Panel principal */
+.dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.balance .amount {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--purple);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.movement-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.movement-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.movement-list li:last-child {
+  border-bottom: 0;
+}
+
+.movement-list small {
+  display: block;
+  color: #5d566a;
+}
+
+.movement-list .value {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.struck {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Transferencia */
+.stepper {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0;
+  margin: 0 0 1rem;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.stepper li {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  color: #7b7387;
+  text-align: center;
+}
+
+.stepper .dot {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.stepper li.current {
+  color: var(--purple);
+  font-weight: 700;
+}
+
+.stepper li.current .dot {
+  background: var(--purple);
+  color: #fff;
+}
+
+.options {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.option.selected {
+  border-color: var(--purple);
+  background: #f8f1fb;
+}
+
+.option small {
+  display: block;
+  color: #5d566a;
+}
+
+.summary {
+  padding-left: 1.25rem;
+}
+
+.notice {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #fcc934;
+  font-size: 0.9rem;
+}
+
+.notice .code {
+  letter-spacing: 0.2em;
+  font-size: 1.1rem;
+}
+
+.result {
+  text-align: center;
+}
+
+.result .big {
+  margin: 0;
+  font-size: 3rem;
+}
+
+.result .ok {
+  color: var(--teal-dark);
+}
+
+.result .bad {
+  color: var(--danger);
+}
+
+.result .summary {
+  display: inline-block;
+  text-align: left;
+}
+
+/* Consola de pruebas */
+.services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.services .current {
+  font-weight: 700;
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.current {
+  font-weight: 700;
+}
+
+pre {
+  overflow: auto;
+  background: #f4f4f4;
+  padding: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+th,
+td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+/* Pantallas medianas y grandes */
+@media (min-width: 768px) {
+  .dashboard {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .dashboard .movements {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard > app-transfer-flow {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .btn-dark {
+    width: 100%;
+  }
+}
