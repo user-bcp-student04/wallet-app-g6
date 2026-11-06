@@ -1,5 +1,5 @@
 # api/requirements.txt
-fastapi==0.115.6
-starlette==0.41.3
-pydantic==2.10.3
-uvicorn==0.34.0
+fastapi==0.115.0
+starlette==0.38.6
+uvicorn==0.30.6
+pydantic==2.9.2

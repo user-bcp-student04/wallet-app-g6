@@ -1,9 +1,17 @@
 # api/app/middleware.py
-"""Middleware ASGI que limita el tamaño del cuerpo antes de que se parsee."""
-from fastapi import HTTPException
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+"""Middleware ASGI que limita los bytes del cuerpo antes de parsearlo."""
+import json
+from typing import Any, Awaitable, Callable, MutableMapping
 
-from .errors import STATUS_MESSAGES, error_response
+Scope = MutableMapping[str, Any]
+Message = MutableMapping[str, Any]
+Receive = Callable[[], Awaitable[Message]]
+Send = Callable[[Message], Awaitable[None]]
+ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
+
+
+class BodyTooLarge(Exception):
+    """Se lanza cuando el cuerpo recibido supera el límite."""
 
 
 class BodySizeLimitMiddleware:
@@ -16,35 +24,73 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        declared = None
+        # 1) Content-Length declarado: rechazo inmediato.
         for name, value in scope.get("headers", []):
             if name == b"content-length":
                 try:
                     declared = int(value)
                 except ValueError:
-                    declared = -1
+                    await self._reject(
+                        send, 400, "BAD_REQUEST", "Content-Length inválido."
+                    )
+                    return
+                if declared < 0:
+                    await self._reject(
+                        send, 400, "BAD_REQUEST", "Content-Length inválido."
+                    )
+                    return
+                if declared > self.max_bytes:
+                    await self._reject(
+                        send,
+                        413,
+                        "PAYLOAD_TOO_LARGE",
+                        "El cuerpo excede el tamaño permitido.",
+                    )
+                    return
                 break
 
-        if declared is not None and declared < 0:
-            response = error_response(400, "BAD_REQUEST", STATUS_MESSAGES[400])
-            await response(scope, receive, send)
-            return
-        if declared is not None and declared > self.max_bytes:
-            response = error_response(413, "PAYLOAD_TOO_LARGE", STATUS_MESSAGES[413])
-            await response(scope, receive, send)
-            return
-
+        # 2) Conteo real de bytes (cubre chunked o Content-Length falso).
         received = 0
-        max_bytes = self.max_bytes
+        response_started = False
 
         async def limited_receive() -> Message:
             nonlocal received
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > max_bytes:
-                    # HTTPException atraviesa el parseo de FastAPI y sale como 413 con el formato común.
-                    raise HTTPException(status_code=413)
+                if received > self.max_bytes:
+                    raise BodyTooLarge()
             return message
 
-        await self.app(scope, limited_receive, send)
+        async def tracking_send(message: Message) -> None:
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, tracking_send)
+        except BodyTooLarge:
+            if not response_started:
+                await self._reject(
+                    send,
+                    413,
+                    "PAYLOAD_TOO_LARGE",
+                    "El cuerpo excede el tamaño permitido.",
+                )
+
+    @staticmethod
+    async def _reject(send: Send, status: int, code: str, message: str) -> None:
+        body = json.dumps({"code": code, "message": message}).encode("utf-8")
+        await send(
+            {
+                "type": "http.response.start",
+                "status": status,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                    (b"connection", b"close"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
