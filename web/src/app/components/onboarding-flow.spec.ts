@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../environments/environment';
 import { OnboardingEventsService } from '../services/onboarding-events.service';
+import { SessionService } from '../services/session.service';
 import { OnboardingFlow } from './onboarding-flow';
 
 const BASE = environment.mockBaseUrl;
@@ -99,6 +100,14 @@ describe('OnboardingFlow', () => {
   it('con APPROVED activa la wallet y habilita el acceso a pagos', async () => {
     await submitWith('APPROVED', 'ACTIVE');
     expect(root.textContent).toContain('Paso actual: resultado');
+    expect(root.textContent).toContain('Tu cuenta está activa');
+    expect(button('Ir a pagos de bajo monto').disabled).toBe(false);
+  });
+
+  it('no cambia el estado del flujo si la consola crea otra verificación', async () => {
+    await submitWith('APPROVED', 'ACTIVE');
+    TestBed.inject(SessionService).rememberVerification('kyc-2', 'w-2', 'PENDING');
+    await tick();
     expect(root.textContent).toContain('Tu cuenta está activa');
     expect(button('Ir a pagos de bajo monto').disabled).toBe(false);
   });

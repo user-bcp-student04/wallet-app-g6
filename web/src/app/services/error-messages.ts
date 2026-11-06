@@ -24,7 +24,10 @@ const BY_CODE: Record<string, ReadableError> = {
 };
 
 const BY_STATUS: Record<number, ReadableError> = {
-  0: { message: 'No se pudo contactar con el mock.', action: 'Revisa la URL base y que el mock esté en ejecución.' },
+  0: {
+    message: 'No se pudo contactar con el mock.',
+    action: 'Revisa la URL base, que el mock esté en ejecución y que permita los headers enviados (CORS).',
+  },
   400: { message: 'La solicitud tiene datos inválidos.', action: 'Corrige los campos e inténtalo de nuevo.' },
   404: BY_CODE['NOT_FOUND'],
   409: { message: 'La operación entra en conflicto con el estado actual.', action: 'Consulta el estado y reintenta.' },

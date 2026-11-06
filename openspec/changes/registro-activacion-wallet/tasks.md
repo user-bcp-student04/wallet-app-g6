@@ -49,7 +49,8 @@ Cobertura básica por endpoint (camino feliz y un camino de error), según la ta
 - [x] 3.9 Manejador de errores común: `400`, `404`, `409`, `413`, `429` y `503` con mensaje accionable
 - [x] 3.10 Pasos visibles, bloqueo con dato faltante e inválido, y estado activo tras onboarding exitoso frente a incompleto, `PENDING` o `REJECTED`
 - [x] 3.11 Eventos (completo y abandonado) y cálculo de mediana
-  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 45 pruebas pasadas; `npx ng build` sin errores.
+  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 46 pruebas pasadas; `npx ng build` sin errores.
+  - Validación manual (2026-11-06) con `ng serve` en `http://localhost:4200` contra el mock del grupo 6: `GET /scenarios`, `POST /kyc/verifications` (`APPROVED` y `MANUAL_REVIEW`), `GET /wallets/{id}`, `GET /support/cases` y decisión `ACTIVE` (repetida: `200`) funcionan desde el navegador. Con latencia 300 ms el navegador bloquea `GET /health` por CORS (`x-mock-latency-ms` no permitido), como anticipaba el hallazgo de 1.4. Corregido un defecto: el flujo mostraba el estado de la última verificación creada desde la consola en lugar del de su propia wallet.
 - [ ] 3.12 Adjuntar al PR la salida real de las pruebas ejecutadas por una persona
 
 ## 4. Validación
