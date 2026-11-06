@@ -1,9 +1,14 @@
 ## 1. Preparación
 
-- [ ] 1.1 Configurar `.env` con `GITHUB_OWNER=user-bcp-student04`, `PR_REPO=wallet-app-g6` y `CREWAI_INCLUDE_DATA=true`
-- [ ] 1.2 Ejecutar `python tools/verify.py` en `wallet-app-g6` y registrar la línea base
+- [x] 1.1 Configurar `.env` con `GITHUB_OWNER=user-bcp-student04`, `PR_REPO=wallet-app-g6` y `CREWAI_INCLUDE_DATA=true`
+  - Verificado el 2026-11-06: las tres variables están definidas en `.env`, que está ignorado por git y no se versiona.
+- [x] 1.2 Ejecutar `python tools/verify.py` en `wallet-app-g6` y registrar la línea base
+  - Línea base (2026-11-06, Python 3.13.15, crewai 1.15.36): `Ran 21 tests ... OK` y `All pipeline checks passed. No model or external service was called.`
 - [ ] 1.3 Cerrar las preguntas bloqueantes de la spec (frontera de eventos, pasos adicionales al KYC simulado, persistencia de eventos, CORS del mock, usuario activo, fuente de gasto de adquisición)
+  - Cerrada: persistencia de eventos = almacenamiento local del navegador, provisional (según `design.md`); no sirve para MAU y CAC reales.
+  - Siguen abiertas: frontera de eventos de duración, pasos adicionales al KYC simulado, CORS del mock, usuario activo, fuente de gasto de adquisición (y espera de `PENDING`, muestra de la mediana).
 - [ ] 1.4 Verificar que el mock W1 responde (`GET /health`) en la URL local o del grupo y fijarla en `environment.ts`
+  - Pendiente: `GET http://127.0.0.1:8787/health` expiró (2026-11-06) porque el mock no está en ejecución, y `environment.ts` no existe hasta que se genere `web/` (issue #8).
 
 ## 2. Generación en el repo destino
 
