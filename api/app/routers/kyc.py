@@ -1,53 +1,55 @@
 # api/app/routers/kyc.py
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends
 
-from app.schemas import (
-    ERROR_RESPONSES,
-    KycDecisionRequest,
-    KycVerificationRequest,
-    VerificationResponse,
+from .. import services
+from ..repository import InMemoryStore, get_store
+from ..schemas import (
+    DecisionIn,
+    ErrorOut,
+    ResourceId,
+    VerificationCreate,
+    VerificationOut,
 )
-from app.services import OnboardingService, get_current_owner, get_onboarding_service
 
-router = APIRouter(prefix="/kyc", tags=["kyc"])
+router = APIRouter(prefix="/kyc/verifications", tags=["kyc"])
 
 
 @router.post(
-    "/verifications",
-    response_model=VerificationResponse,
+    "",
+    response_model=VerificationOut,
     status_code=201,
-    responses=ERROR_RESPONSES,
+    responses={400: {"model": ErrorOut}, 413: {"model": ErrorOut}, 503: {"model": ErrorOut}},
 )
 def create_verification(
-    body: KycVerificationRequest,
-    owner_id: str = Depends(get_current_owner),
-    service: OnboardingService = Depends(get_onboarding_service),
-) -> VerificationResponse:
-    return service.create_verification(owner_id, body.document_number, body.scenario)
+    payload: VerificationCreate, store: InMemoryStore = Depends(get_store)
+) -> VerificationOut:
+    return services.create_verification(store, payload)
 
 
 @router.get(
-    "/verifications/{verification_id}",
-    response_model=VerificationResponse,
-    responses=ERROR_RESPONSES,
+    "/{verification_id}",
+    response_model=VerificationOut,
+    responses={400: {"model": ErrorOut}, 404: {"model": ErrorOut}},
 )
 def get_verification(
-    verification_id: str = Path(min_length=1, max_length=64),
-    owner_id: str = Depends(get_current_owner),
-    service: OnboardingService = Depends(get_onboarding_service),
-) -> VerificationResponse:
-    return service.get_verification(owner_id, verification_id)
+    verification_id: ResourceId, store: InMemoryStore = Depends(get_store)
+) -> VerificationOut:
+    return services.get_verification(store, verification_id)
 
 
 @router.post(
-    "/verifications/{verification_id}/decision",
-    response_model=VerificationResponse,
-    responses=ERROR_RESPONSES,
+    "/{verification_id}/decision",
+    response_model=VerificationOut,
+    responses={
+        400: {"model": ErrorOut},
+        404: {"model": ErrorOut},
+        409: {"model": ErrorOut},
+        413: {"model": ErrorOut},
+    },
 )
 def decide_verification(
-    body: KycDecisionRequest,
-    verification_id: str = Path(min_length=1, max_length=64),
-    owner_id: str = Depends(get_current_owner),
-    service: OnboardingService = Depends(get_onboarding_service),
-) -> VerificationResponse:
-    return service.decide_verification(owner_id, verification_id, body.decision)
+    verification_id: ResourceId,
+    payload: DecisionIn,
+    store: InMemoryStore = Depends(get_store),
+) -> VerificationOut:
+    return services.decide_verification(store, verification_id, payload.decision)

@@ -1,14 +1,12 @@
 # api/app/middleware.py
 """Middleware ASGI que limita el tamaño del cuerpo antes de que se parsee."""
-from starlette.responses import JSONResponse
+from fastapi import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.errors import ApiError, error_body
-
-_TOO_LARGE_MESSAGE = "El cuerpo de la solicitud supera el tamaño permitido. Envía menos datos."
+from .errors import STATUS_MESSAGES, error_response
 
 
-class BodyLimitMiddleware:
+class BodySizeLimitMiddleware:
     def __init__(self, app: ASGIApp, max_bytes: int) -> None:
         self.app = app
         self.max_bytes = max_bytes
@@ -18,44 +16,35 @@ class BodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # 1) Comprobación temprana con Content-Length.
+        declared = None
         for name, value in scope.get("headers", []):
             if name == b"content-length":
-                if not value.isdigit():
-                    await self._respond(scope, receive, send, 400, "BAD_REQUEST", "La cabecera Content-Length no es válida.")
-                    return
-                if int(value) > self.max_bytes:
-                    await self._respond(scope, receive, send, 413, "PAYLOAD_TOO_LARGE", _TOO_LARGE_MESSAGE)
-                    return
+                try:
+                    declared = int(value)
+                except ValueError:
+                    declared = -1
                 break
 
-        # 2) Conteo real de bytes (cubre chunked o Content-Length falso).
+        if declared is not None and declared < 0:
+            response = error_response(400, "BAD_REQUEST", STATUS_MESSAGES[400])
+            await response(scope, receive, send)
+            return
+        if declared is not None and declared > self.max_bytes:
+            response = error_response(413, "PAYLOAD_TOO_LARGE", STATUS_MESSAGES[413])
+            await response(scope, receive, send)
+            return
+
         received = 0
-        response_started = False
+        max_bytes = self.max_bytes
 
         async def limited_receive() -> Message:
             nonlocal received
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
-                    raise ApiError(413, "PAYLOAD_TOO_LARGE", _TOO_LARGE_MESSAGE)
+                if received > max_bytes:
+                    # HTTPException atraviesa el parseo de FastAPI y sale como 413 con el formato común.
+                    raise HTTPException(status_code=413)
             return message
 
-        async def tracking_send(message: Message) -> None:
-            nonlocal response_started
-            if message["type"] == "http.response.start":
-                response_started = True
-            await send(message)
-
-        try:
-            await self.app(scope, limited_receive, tracking_send)
-        except ApiError as exc:
-            if response_started:
-                raise
-            await self._respond(scope, receive, send, exc.status_code, exc.code, exc.message)
-
-    @staticmethod
-    async def _respond(scope: Scope, receive: Receive, send: Send, status: int, code: str, message: str) -> None:
-        response = JSONResponse(status_code=status, content=error_body(code, message))
-        await response(scope, receive, send)
+        await self.app(scope, limited_receive, send)

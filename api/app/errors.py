@@ -1,90 +1,109 @@
 # api/app/errors.py
-"""Excepción de dominio y handlers que unifican el formato {"code","message"}."""
+"""Formato único de error {"code","message"} y handlers de excepciones."""
 import logging
-import re
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("app.errors")
 
-_HTTP_ERRORS: dict[int, tuple[str, str]] = {
-    400: ("BAD_REQUEST", "La solicitud no es válida."),
-    401: ("UNAUTHENTICATED", "No se pudo identificar al usuario."),
-    403: ("FORBIDDEN", "No tienes permisos para realizar esta acción."),
-    404: ("NOT_FOUND", "El recurso solicitado no existe."),
-    405: ("METHOD_NOT_ALLOWED", "El método no está permitido para esta ruta."),
-    409: ("CONFLICT", "La solicitud entra en conflicto con el estado actual."),
-    413: ("PAYLOAD_TOO_LARGE", "El cuerpo de la solicitud supera el tamaño permitido."),
-    422: ("VALIDATION_ERROR", "La solicitud no es válida."),
+STATUS_CODES: dict[int, str] = {
+    400: "BAD_REQUEST",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    405: "METHOD_NOT_ALLOWED",
+    409: "CONFLICT",
+    413: "PAYLOAD_TOO_LARGE",
+    429: "RATE_LIMITED",
+    503: "SERVICE_UNAVAILABLE",
 }
 
-_UNSAFE_NAME_CHARS = re.compile(r"[^A-Za-z0-9_.\-]")
+STATUS_MESSAGES: dict[int, str] = {
+    400: "La solicitud no es válida. Revise los datos enviados e intente de nuevo.",
+    401: "Se requiere autenticación para esta operación.",
+    403: "No tiene permisos para esta operación.",
+    404: "El recurso solicitado no existe.",
+    405: "El método no está permitido para esta ruta.",
+    409: "La operación entra en conflicto con el estado actual del recurso.",
+    413: "El cuerpo de la solicitud es demasiado grande. Reduzca su tamaño e intente de nuevo.",
+    429: "Demasiadas solicitudes. Espere unos segundos e intente de nuevo.",
+    503: "El servicio no está disponible. Intente de nuevo más tarde.",
+}
 
 
-class ApiError(HTTPException):
-    """Error de negocio con código estable. Hereda de HTTPException para que FastAPI lo propague tal cual."""
+class ApiError(Exception):
+    """Error de negocio con código HTTP y código de error del contrato."""
 
     def __init__(self, status_code: int, code: str, message: str) -> None:
-        super().__init__(status_code=status_code, detail=message)
+        super().__init__(message)
+        self.status_code = status_code
         self.code = code
         self.message = message
 
 
-def error_body(code: str, message: str) -> dict[str, str]:
-    return {"code": code, "message": message}
-
-
-def _field_names(exc: RequestValidationError) -> list[str]:
-    names: list[str] = []
-    for err in exc.errors():
-        loc = err.get("loc", ())
-        parts = [str(p) for p in loc[1:] if not isinstance(p, int)]
-        if not parts:
-            continue
-        name = _UNSAFE_NAME_CHARS.sub("?", ".".join(parts))[:64]
-        if name not in names:
-            names.append(name)
-    return names[:5]
-
-
-async def _api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+def error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    headers: Optional[dict[str, str]] = None,
+) -> JSONResponse:
     return JSONResponse(
-        status_code=exc.status_code,
-        content=error_body(exc.code, exc.message),
-        headers=exc.headers,
+        status_code=status_code,
+        content={"code": code, "message": message},
+        headers=headers,
     )
 
 
-async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    code, message = _HTTP_ERRORS.get(exc.status_code, ("HTTP_ERROR", "No se pudo procesar la solicitud."))
-    headers: Optional[dict[str, str]] = getattr(exc, "headers", None)
-    return JSONResponse(status_code=exc.status_code, content=error_body(code, message), headers=headers)
+async def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+    return error_response(exc.status_code, exc.code, exc.message)
 
 
-async def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    names = _field_names(exc)
-    if names:
-        message = f"La solicitud no es válida. Corrige los campos: {', '.join(names)}."
-    else:
-        message = "El cuerpo de la solicitud no es válido o está vacío. Envía un JSON conforme al contrato."
-    return JSONResponse(status_code=422, content=error_body("VALIDATION_ERROR", message))
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    # Se ignora exc.detail para no filtrar texto interno; el mensaje es fijo por código HTTP.
+    code = STATUS_CODES.get(exc.status_code, "HTTP_ERROR")
+    message = STATUS_MESSAGES.get(
+        exc.status_code, "No se pudo completar la solicitud."
+    )
+    headers = dict(exc.headers) if exc.headers else None
+    return error_response(exc.status_code, code, message, headers)
 
 
-async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
-    # La traza queda solo en el log del servidor; el cliente recibe un mensaje genérico.
-    logger.exception("Error no controlado en %s %s", request.method, request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content=error_body("INTERNAL_ERROR", "Ocurrió un error interno. Inténtalo de nuevo más tarde."),
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    fields: set[str] = set()
+    for error in exc.errors():
+        parts = [str(p) for p in error.get("loc", ()) if p not in ("body", "query", "path")]
+        if parts:
+            fields.add(".".join(parts))
+    detail = f" Campos: {', '.join(sorted(fields))}." if fields else ""
+    return error_response(
+        400,
+        "BAD_REQUEST",
+        "La solicitud no es válida. Revise los datos enviados e intente de nuevo." + detail,
     )
 
 
-def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(ApiError, _api_error_handler)
-    app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
-    app.add_exception_handler(RequestValidationError, _validation_handler)
-    app.add_exception_handler(Exception, _unhandled_handler)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # La traza solo va al log del servidor, nunca al cliente.
+    logger.error(
+        "Error no controlado en %s %s", request.method, request.url.path, exc_info=exc
+    )
+    return error_response(
+        500,
+        "INTERNAL_ERROR",
+        "Ocurrió un error interno. Intente de nuevo más tarde.",
+    )
+
+
+def register_error_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(ApiError, api_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, unhandled_exception_handler)
