@@ -1,45 +1,81 @@
-# wallet-app (plantilla Hackathon)
+# Épica: MVP de wallet en Perú para acceso al transporte público
 
-Esqueleto autocontenido derivado de `crewai-grupo-06`. Genera una billetera (FastAPI + Angular 17)
-con agentes CrewAI a partir del backlog del proyecto `wallet-app`.
+Documentación de la épica definida en [peru-wallet-mvp.sp.md](peru-wallet-mvp.sp.md), enfocada en el acceso al transporte público.
 
-Orden del flujo: `architect → backend → frontend → testing → security → chapter`
-(con `data` al inicio si `CREWAI_INCLUDE_DATA=true`). Cada etapa pide aprobación humana (`s`/`n`/`r`).
+## Descripción
 
-## Arranque rápido
+Lanzar un MVP de wallet en Perú que permita pagar y acceder al transporte público con un solo medio de pago, ya sea por contacto o por QR. Busca reducir la fricción en checkout y acelerar el onboarding, manteniendo la confianza del usuario con confirmaciones claras, manejo confiable de estados y límites alineados a cumplimiento.
 
-Requiere Python 3.11–3.13, Git, Copilot CLI (`copilot` → `/login`) y el MCP Projects activo.
+## Público objetivo
 
-```bash
-cd wallet-app
-python -m venv .venv
-source .venv/Scripts/activate   # Git Bash en Windows; en macOS/Linux: source .venv/bin/activate
-python -m pip install -r requirements.txt
-cp .env.example .env            # completa GITHUB_OWNER, PROJECTS_MCP_URL y PROJECTS_MCP_API_KEY
-python tools/verify.py          # comprobación sin credenciales
-python main.py
-```
+- **Empresas de transporte público**: tren, metropolitano y corredores auxiliares.
+- **Usuarios del transporte público** que acceden y recargan con smartphone.
 
-## Estructura
+## Problema
 
-- `agents/`: un archivo por rol (instrucciones y tarea). Edita aquí el prompt de cada agente.
-- `crew/`: orden del flujo, configuración del LLM y publicación del PR.
-- `lab_copilot/`: runtime de Copilot.
-- `mcp_projects.py`: cliente del backlog MCP.
-- `support/mcp-local/`: MCP local (requiere Podman/Docker y la imagen del instructor).
-- `tests/` y `tools/verify.py`: verificación del flujo.
-- `output/`: artefactos generados (specs, `api/`, `frontend-angular/`, `db/`). Está ignorado por git.
+- El acceso al transporte depende de una **tarjeta física recargable**.
+- Recargar con otras billeteras digitales exige un **paso adicional de activación**.
+- Se forman **colas** para activar la recarga o realizar recargas.
+- La caída en checkout es alta y el onboarding es lento.
 
-## Probar lo generado
+## Propuesta de valor
 
-```sh
-cd output/api && pip install -r requirements.txt && pytest && uvicorn app.main:app --reload
-cd output/frontend-angular && npm install && npm start
-```
+- **Un solo medio de pago** que agiliza el acceso al transporte, con contacto o por QR.
+- **Sin reposición de tarjetas** por deterioro o pérdida.
+- **Sin colas ni paso de activación** para recargar.
 
-API en `http://localhost:8000`, Angular en `http://localhost:4200`.
+## Objetivos (1 trimestre)
 
-## Referencias
+| Métrica | Línea base | Objetivo |
+|---|---|---|
+| Caída en checkout | 30% | 8% |
+| Tiempo de onboarding | 8 min | 3 min |
+| MAU (meses 1-3 post-lanzamiento) | n/d | 1,000 - 2,000 |
+| CAC por usuario nuevo (meses 1-3) | n/d | PEN 10 |
 
-Detalle completo en [MEJORA_TU_AGENTE.md](MEJORA_TU_AGENTE.md), [TEAM.md](TEAM.md) y [SOURCE.md](SOURCE.md).
-`.env` nunca se commitea.
+Los umbrales de MAU y CAC los define el Product Owner. Las métricas específicas de transporte (por ejemplo, tiempo de acceso o reducción de colas) están por definir.
+
+## Alcance
+
+**Incluye**
+
+- Onboarding de wallet para el segmento MVP en Perú.
+- Pago de acceso al transporte público por contacto o QR.
+- Recarga desde la wallet sin paso adicional de activación.
+- Visibilidad de confirmación y estado de pago para usuarios y empresas de transporte.
+- Instrumentación base del funnel de checkout, finalización de onboarding y activación al mes 3.
+
+**Fuera de alcance**
+
+- Despliegue multipaís amplio.
+- Programas avanzados de lealtad o mecánicas de crecimiento no esenciales.
+- Paridad funcional completa entre todos los proveedores/bancos externos desde el día uno.
+- APIs de pago abiertas y de autoservicio para terceros.
+
+## Supuestos y restricciones
+
+- Ecosistema multirriel: no asumir un único riel de procesamiento de extremo a extremo.
+- Integraciones contractuales con habilitaciones operativas; el alta de proveedores no es inmediata.
+- Los límites por proveedor pueden ser menores al máximo regulatorio; el producto y la UX deben reflejarlo.
+- Se espera disponibilidad de pagos inmediatos con alias (24x7x365).
+- La confirmación de pago en el acceso debe ser rápida; el tiempo máximo aceptable está por definir con cada operador.
+
+## Dependencias y riesgos
+
+| Tipo | Descripción |
+|---|---|
+| Dependencia | Acuerdos y habilitación técnica con las empresas de transporte (tren, metropolitano, corredores auxiliares). |
+| Dependencia | Compatibilidad de los validadores con lectura por contacto y por QR. |
+| Dependencia | Partners de adquirencia/gateway para QR y procesamiento wallet. |
+| Riesgo | Reintentos sin idempotencia robusta: duplicidad financiera y desvíos de conciliación. |
+| Riesgo | Transiciones asíncronas del estado de pago: pérdida de confianza si la confirmación no es clara o llega tarde en el acceso. |
+| Riesgo | Reversos y disputas deben tener manejo operativo/legal explícito. |
+
+## Historias de usuario candidatas
+
+1. Como usuario del transporte público, completo el onboarding rápidamente y entiendo el siguiente paso en cada punto del flujo.
+2. Como pasajero, accedo al transporte pagando por contacto o QR con la wallet, sin tarjeta física.
+3. Como pasajero, recargo desde mi wallet sin paso adicional de activación ni colas.
+4. Como pasajero, no necesito reponer una tarjeta por deterioro o pérdida.
+5. Como empresa de transporte, valido el estado del pago de forma confiable en el acceso.
+6. Como operaciones/compliance, monitoreo estados de pago y concilio las transacciones núcleo del MVP.
