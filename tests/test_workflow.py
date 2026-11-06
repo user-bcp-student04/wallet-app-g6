@@ -67,7 +67,7 @@ class WorkflowTests(unittest.TestCase):
             return f"Approved output from {key}. No model was called."
 
         with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
-            stack.enter_context(patch.dict("os.environ", {"CREWAI_INCLUDE_DATA": str(with_data).lower()}))
+            stack.enter_context(patch.dict("os.environ", {"CREWAI_INCLUDE_DATA": str(with_data).lower(), "FEATURE_SOURCE": "mcp"}))
             output = Path(tmp)
             stack.enter_context(patch.object(app, "OUTPUT_DIR", output))
             stack.enter_context(
@@ -145,7 +145,7 @@ class WorkflowTests(unittest.TestCase):
                 len(calls), len(expected), "Approved steps must not call the model again"
             )
             before = (output / ".checkpoint.json").read_text()
-            with patch.dict("os.environ", {"CREWAI_INCLUDE_DATA": str(not with_data).lower()}):
+            with patch.dict("os.environ", {"CREWAI_INCLUDE_DATA": str(not with_data).lower(), "FEATURE_SOURCE": "mcp"}):
                 with self.assertRaises(SystemExit) as stopped:
                     app.main()
                 self.assertEqual(stopped.exception.code, 1)
