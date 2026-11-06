@@ -1,31 +1,37 @@
 # api/app/config.py
-"""Constantes y configuración del API, leídas del entorno con valores por defecto."""
+"""Configuración leída de variables de entorno, con valores por defecto."""
 import os
-from pathlib import Path
 
 
-def _positive_int_env(name: str, default: int) -> int:
-    raw = os.environ.get(name)
-    if raw is None or raw.strip() == "":
+def _int_env(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    if raw is None:
         return default
     try:
         value = int(raw)
-    except ValueError as exc:
-        raise RuntimeError(f"La variable de entorno {name} debe ser un entero positivo.") from exc
-    if value <= 0:
-        raise RuntimeError(f"La variable de entorno {name} debe ser un entero positivo.")
-    return value
+    except ValueError:
+        return default
+    return value if value >= minimum else default
 
 
-# Directorio raíz donde se guarda el estado por propietario (subdirectorios con hash SHA-256).
-DATA_DIR: Path = Path(os.environ.get("DATA_DIR", "data"))
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
-# Tamaño máximo del cuerpo de cualquier solicitud, en bytes (contrato: 413 si se supera).
-MAX_BODY_BYTES: int = _positive_int_env("MAX_BODY_BYTES", 16384)
 
-# Tope de verificaciones KYC por propietario (acota el uso de disco del mock).
-MAX_VERIFICATIONS_PER_OWNER: int = _positive_int_env("MAX_VERIFICATIONS_PER_OWNER", 50)
+# Tamaño máximo del cuerpo de una petición (bytes). Contrato: rechazar con 413.
+MAX_BODY_BYTES: int = _int_env("MAX_BODY_BYTES", 16384)
 
-# Cabecera de identidad del mock (S-2 / P-9: sustituir por el mecanismo real de autenticación).
-OWNER_HEADER: str = "X-Owner-Id"
-OWNER_ID_PATTERN: str = r"[A-Za-z0-9._-]{1,128}"
+# Longitud máxima del número de documento.
+DOCUMENT_MAX_LENGTH: int = _int_env("DOCUMENT_MAX_LENGTH", 32)
+
+# Patrón de los identificadores de recurso en rutas.
+RESOURCE_ID_PATTERN: str = r"^[A-Za-z0-9_-]{1,64}$"
+
+# Si es true, el servidor exige el prefijo TEST- en el documento (P-4: por defecto solo cliente).
+ENFORCE_TEST_DOC_PREFIX: bool = _bool_env("ENFORCE_TEST_DOC_PREFIX", False)
+
+# Permite desactivar POST /control/reset fuera del laboratorio.
+ENABLE_CONTROL_RESET: bool = _bool_env("ENABLE_CONTROL_RESET", True)
