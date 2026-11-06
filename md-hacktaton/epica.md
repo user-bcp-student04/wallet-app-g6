@@ -16,7 +16,7 @@ La quinta actividad del programa reúne lo trabajado en los laboratorios anterio
 
 Conserva la carpeta con matrícula y nombre creada por `curso` el Día 1. El repositorio del producto elegido para la hackatón se clona dentro de su `reqflow-workspace/`; si ya existe, reutiliza ese clon y comprueba `git remote -v`. Ejecuta cada comando desde la raíz del repositorio al que pertenece.
 
-Si reutilizas los agentes del Día 4, `crewai/` y `guardrails/` permanecen al lado de `reqflow-workspace/`, dentro de la misma carpeta del curso. Cada uno conserva su propio repositorio y entorno. Las guías, la épica y las historias se leen o descargan del portal en https://wallet-app-g6.pages.dev. No necesitas clonar `wallet-app-g6` ni ejecutar la solución dentro del repositorio del portal.
+Si reutilizas los agentes del Día 4, `crewai/` y `guardrails/` permanecen al lado de `reqflow-workspace/`, dentro de la misma carpeta del curso. Cada uno conserva su propio repositorio y entorno. Las guías, la épica y las historias se leen o descargan del portal en https://bcp-wallet-app-g6.pages.dev. No necesitas clonar `bcp-wallet-app-g6` ni ejecutar la solución dentro del repositorio del portal.
 
 ## Cómo abordar el reto
 
