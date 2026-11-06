@@ -16,7 +16,7 @@ Lanzar un MVP de wallet en Perú que permita pagar y acceder al transporte públ
 - El acceso al transporte depende de una **tarjeta física recargable**.
 - Recargar con otras billeteras digitales exige un **paso adicional de activación**.
 - Se forman **colas** para activar la recarga o realizar recargas.
-- La caída en checkout es alta y el onboarding es lento.
+- Muchos pasajeros abandonan el pago a mitad de camino y crear la cuenta toma demasiado tiempo: terminan perdiendo minutos valiosos antes de poder viajar.
 
 ## Propuesta de valor
 
