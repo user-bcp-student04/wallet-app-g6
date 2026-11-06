@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -34,12 +34,18 @@ import { AuthService } from '../services/auth.service';
           }
           <button type="submit" class="btn btn-dark">Ingresar</button>
         </form>
+        <button type="button" class="btn btn-link" (click)="registerRequested.emit()">
+          ¿Eres nuevo? Regístrate
+        </button>
       </section>
     </main>
   `,
 })
 export class LoginView {
   private readonly auth = inject(AuthService);
+
+  readonly registerRequested = output<void>();
+
   protected readonly dni = signal('');
   protected readonly password = signal('');
   protected readonly error = signal<string | null>(null);

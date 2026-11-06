@@ -1,12 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DashboardView } from './components/dashboard-view';
 import { LoginView } from './components/login-view';
+import { RegisterView } from './components/register-view';
 import { TestConsole } from './components/test-console';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
-  imports: [LoginView, DashboardView, TestConsole],
+  imports: [LoginView, RegisterView, DashboardView, TestConsole],
   template: `
     @if (auth.user(); as user) {
       <header class="topbar">
@@ -36,18 +37,22 @@ import { AuthService } from './services/auth.service';
           <app-dashboard-view />
         }
       </main>
+    } @else if (guest() === 'login') {
+      <app-login-view (registerRequested)="guest.set('register')" />
     } @else {
-      <app-login-view />
+      <app-register-view (loginRequested)="guest.set('login')" />
     }
   `,
 })
 export class App {
   protected readonly auth = inject(AuthService);
   protected readonly view = signal<'home' | 'console'>('home');
+  protected readonly guest = signal<'register' | 'login'>('register');
   protected readonly isAdmin = computed(() => this.auth.user()?.role === 'admin');
 
   protected logout(): void {
     this.view.set('home');
+    this.guest.set('login');
     this.auth.logout();
   }
 }
