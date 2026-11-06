@@ -4,7 +4,7 @@
 - No existe lógica de onboarding, estado de wallet ni eventos analíticos en este repositorio.
 - El código de producto se genera hacia `api/` (FastAPI), `web/` (Angular) y `db/`; las specs van a `docs/crewai/<slug>/`.
 - Spec de entrada: `specs/wallet-onboarding/spec.md`.
-- Fuente de contrato para KYC y wallet: mock W1 en `docs/bcp-wallet-mock-openapi.yaml` y `docs/H1_registro` (en memoria, sin autenticación, importes en céntimos PEN, límite de 2000 recursos por grupo).
+- Fuente de contrato para KYC, wallet, pagos y QR: mock W1–W3 en `docs/bcp-wallet-mock-openapi.yaml` y `docs/H1_registro` (en memoria, sin autenticación, importes en céntimos PEN, límite de 2000 recursos por grupo).
 - El mock no registra eventos de onboarding ni calcula duración, MAU o CAC; eso lo implementa la aplicación.
 
 ## Goals / Non-Goals
@@ -14,13 +14,14 @@
 - Cumplir la spec con el cambio mínimo, sin reescribir el generador.
 - Mantener intactos los contratos del pipeline.
 - Entregar una consola Angular básica que pruebe cada servicio W1 del mock.
+- Entregar registro de cliente con OTP, inicio de sesión, panel de saldo y movimientos, y transferencias por contacto y QR.
 - Cobertura básica de pruebas por endpoint.
 - Entregar en pasos pequeños y reversibles, cada uno con aprobación humana.
 
 **Non-Goals**
 
 - Reescribir o rediseñar el motor (`main.py`, `crew/`).
-- Pago por contacto o QR, recarga, validación de acceso en transporte y conciliación.
+- Recarga, validación de acceso en transporte, conciliación y reversos.
 - Reglas de KYC reales.
 - Resolver deuda técnica fuera del Issue.
 
@@ -36,7 +37,6 @@
 - `tools/verify.py` y los tests existentes.
 - Contrato del mock W1 (`docs/bcp-wallet-mock-openapi.yaml`, `docs/H1_registro`): solo lectura.
 - Estructura de cambio OpenSpec y regla de una historia a la vez.
-- Contratos nuevos (API de onboarding, esquema de eventos, salida analítica): se definen aquí sin alterar los anteriores.
 - Contratos nuevos (API de onboarding, esquema de eventos, salida analítica): se definen aquí sin alterar los anteriores.
 
 ## Decisions
@@ -64,6 +64,13 @@ No se registra ADR adicional: no hay otra decisión significativa tomada.
 - Alternativas consideradas: pasar por `api/` (FastAPI) como proxy (descartada por ahora: agrega una capa y no la pide la historia; se reevaluará si el mock no admite CORS).
 - Consecuencias: la URL base vive en `environment.ts` y es editable en la consola; los eventos se guardan provisionalmente en almacenamiento local del navegador hasta cerrar la pregunta de persistencia; el cálculo de duración y mediana parte de esos eventos.
 
+### Decision: Acceso, panel y transferencias en la web (dummy)
+
+- Opción elegida: la web abre con el registro de cliente (tipo `DNI`, número de hasta 8 dígitos, OTP dummy `0000`); el login (`admin`/`admin`, cliente inexistente: "Ups, registrate como nuevo usuario") es la segunda vista. Tras acceder se muestra el panel con saldo (`GET /wallets/wallet-demo`), últimos 5 movimientos (`GET /payments?walletId=wallet-demo`) y transferencias por contacto y QR. El onboarding KYC, la consola de servicios, la configuración y los eventos pasan a la "Consola de pruebas", solo para `admin`. Un `AuthService` centraliza la sesión y `MockApiService` suma `createPayment` (con `Idempotency-Key`), `resolvePayment`, `listPayments`, `createQr` y `resolveQr`.
+- Motivo: pedido del usuario tras revisar la vista; reutiliza los servicios y el contrato del mock sin API propia.
+- Alternativas consideradas: mantener solo la consola de servicios (descartada por decisión humana).
+- Consecuencias: credenciales, OTP y código de validación son dummy en el cliente y no son autenticación real; todos los clientes comparten `wallet-demo`; un cliente registrado no puede volver a entrar por el login porque el registro no pide contraseña.
+
 ### Contratos nuevos (borrador)
 
 - Evento de onboarding: `{ type: "STARTED" | "STEP_COMPLETED" | "CLOSED", userId, step?, timestamp }`. `userId` es el `id` de verificación cuando existe, o un identificador de sesión antes de la verificación.
@@ -87,6 +94,8 @@ Una prueba de camino feliz y una de error por endpoint, con `HttpTestingControll
 
 Transversal: `413` y `429 GROUP_LIMIT_RESET_REQUIRED` se prueban una vez sobre el manejador de errores común.
 
+Acceso, panel y transferencias (pruebas de servicio y de componente): `POST /payments` (`202` con `Idempotency-Key`; `409 INSUFFICIENT_FUNDS`), `POST /payments/{id}/resolve` (`200`), `GET /payments?walletId=` (lista y vacío), `POST /qrs` y `POST /qrs/resolve` (`410 QR_EXPIRED`); registro (número vacío, no numérico, más de 8 dígitos, OTP incorrecto y `0000`), login (`admin`/`admin`, contraseña incorrecta, cliente inexistente) y flujo de transferencia (monto inválido o mayor al saldo, código de validación incorrecto, rechazo, QR sin validar).
+
 ## Incremental Strategy
 
 1. Ejecutar `python tools/verify.py` y guardar la línea base.
@@ -108,7 +117,9 @@ Transversal: `413` y `429 GROUP_LIMIT_RESET_REQUIRED` se prueban una vez sobre e
 - Instrucciones del Arquitecto orientadas a otro caso (subida de archivos, dependencias) -> evaluar la salida y ajustar solo si es necesario.
 - Datos personales en eventos sin tratamiento definido -> definirlo con seguridad y cumplimiento.
 - KYC real sin definir impide concretar pasos y datos obligatorios adicionales -> se usa solo el KYC simulado y se bloquea el resto hasta su definición.
-- Mock sin CORS o caído por inactividad (datos en memoria) -> proxy de desarrollo si hace falta, y repetir el escenario tras un reinicio.
+- Mock sin CORS o caído por inactividad (datos en memoria) -> proxy de desarrollo si hace falta, y repetir el escenario tras un reinicio. El mock en nube no permite `X-Mock-Latency-Ms` en el preflight: el header solo se envía con latencia mayor que 0.
+- Credenciales, OTP y código de validación dummy en el cliente -> usar solo en la demo; una autenticación real exige backend.
+- Pagos de prueba mutan el grupo compartido del mock (límite de 2000 recursos) -> `POST /control/reset` con confirmación.
 - Límite de 2000 recursos por grupo -> usar `POST /control/reset` con confirmación; el reset borra datos de todo el grupo.
 - Eventos en almacenamiento local no sirven para MAU y CAC reales -> definir persistencia antes de producción.
 - Métricas de duración y CAC no verificables sin frontera de eventos ni fuente de gasto -> cerrar las preguntas de la spec.
@@ -124,3 +135,4 @@ Cada cambio va en un PR separado y se revierte por PR. El generador no ejecuta m
 1. ¿Se editan las instrucciones del Arquitecto o solo se alimenta el feature?
 2. Preguntas de la spec: frontera de eventos de duración; pasos adicionales al KYC simulado; espera de una wallet `PENDING`; persistencia de eventos y URL base cloud/local; CORS del mock; definición de "usuario activo" y fuente del gasto de adquisición; muestra de la mediana.
 3. ¿Se confirma el listado de contratos protegidos?
+4. ¿Los clientes registrados deben poder iniciar sesión después y tener su propia wallet? ¿El DNI debe tener exactamente 8 dígitos?

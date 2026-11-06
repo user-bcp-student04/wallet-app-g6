@@ -33,7 +33,7 @@
 - [x] 2.7 Consola de servicios: `GET /health`, `GET /scenarios`, `GET /support/cases`, ejecución individual, errores legibles y `POST /control/reset` con confirmación
 - [x] 2.8 Salida analítica mensual de nuevos usuarios activos y gasto atribuido
   - Fuente del gasto provisional: campo manual en la consola; la fuente real sigue abierta.
-  - Cambio de alcance (2026-11-06, pedido del usuario tras revisar la vista): `web/` ahora abre con login (DNI y contraseña; usuario dummy `admin`/`admin`) y un panel con saldo, últimos movimientos y transferencias (pago a contacto y pago con QR, con flujo de confirmación y código de validación). El flujo de onboarding y la consola de servicios pasaron a la sección "Consola de pruebas", visible solo para admin. `spec.md` y `design.md` aún no reflejan este cambio (la spec dice "sin autenticación" y deja los pagos fuera de alcance).
+  - Cambio de alcance (2026-11-06, pedido del usuario tras revisar la vista): `web/` ahora abre con login (DNI y contraseña; usuario dummy `admin`/`admin`) y un panel con saldo, últimos movimientos y transferencias (pago a contacto y pago con QR, con flujo de confirmación y código de validación). El flujo de onboarding y la consola de servicios pasaron a la sección "Consola de pruebas", visible solo para admin. `spec.md`, `design.md` y `proposal.md` se actualizaron el 2026-11-06 para reflejar este cambio.
   - Ampliación (2026-11-06): antes del login hay una vista de registro (tipo de documento `DNI`; número solo dígitos, máximo 8) con OTP de aprobación dummy `0000`; al validarlo se entra al panel como `customer` (sin Consola de pruebas). En el login, un DNI distinto de `admin` muestra "Ups, registrate como nuevo usuario".
 
 ## 3. Pruebas
