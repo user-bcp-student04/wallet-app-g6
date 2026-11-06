@@ -1,0 +1,134 @@
+<!-- src/app/consola/consola.component.html -->
+<h1>Consola de servicios</h1>
+<p>Ejecuta cada servicio del mock por separado y revisa su resultado.</p>
+
+@for (svc of services; track svc.key) {
+  <section class="panel" [attr.aria-labelledby]="'svc-' + svc.key">
+    <h2 [id]="'svc-' + svc.key">{{ svc.method }} {{ svc.path }}</h2>
+    <p class="hint">{{ svc.description }}</p>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="btn"
+        [attr.aria-label]="'Ejecutar ' + svc.method + ' ' + svc.path"
+        [attr.aria-disabled]="ariaDisabled()"
+        [attr.aria-busy]="running() === svc.key"
+        (click)="run(svc.key)"
+      >
+        @if (running() === svc.key) { Ejecutando… } @else { Ejecutar }
+      </button>
+    </div>
+
+    <div role="status">
+      @if (running() === svc.key) {
+        <p>Ejecutando {{ svc.method }} {{ svc.path }}…</p>
+      }
+    </div>
+
+    <div role="alert">
+      @if (errors()[svc.key]; as err) {
+        <div class="alert alert-error">
+          <p><strong>Error:</strong> {{ err.message }}</p>
+          <p class="hint">Código: {{ err.code }}</p>
+        </div>
+      }
+    </div>
+
+    @switch (svc.key) {
+      @case ('health') {
+        @if (health(); as h) {
+          <p class="alert alert-ok"><strong>Resultado:</strong> el servicio responde (estado: {{ h.status }}).</p>
+        }
+      }
+      @case ('scenarios') {
+        @if (scenarios(); as list) {
+          @if (list.length === 0) {
+            <p class="alert alert-info">El API no devolvió escenarios.</p>
+          } @else {
+            <ul>
+              @for (item of list; track item.name) {
+                <li><strong>{{ item.name }}</strong>: {{ item.description }}</li>
+              }
+            </ul>
+          }
+        }
+      }
+      @case ('cases') {
+        @if (cases(); as list) {
+          @if (list.length === 0) {
+            <p class="alert alert-info">No hay casos de soporte para tu usuario.</p>
+          } @else {
+            <ul>
+              @for (item of list; track item.verification_id) {
+                <li>
+                  <strong>{{ item.status }}</strong> — {{ item.message }}
+                  <span class="hint">(verificación {{ item.verification_id }})</span>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    }
+  </section>
+}
+
+<section class="panel" aria-labelledby="reset-h">
+  <h2 id="reset-h">POST /control/reset</h2>
+  <p class="hint">
+    Borra todo el progreso de tu usuario (pasos, verificaciones y eventos). Esta acción no se puede deshacer.
+  </p>
+
+  <div role="status">
+    @if (running() === 'reset') {
+      <p>Reiniciando tu estado…</p>
+    }
+    @if (resetDone()) {
+      <p class="alert alert-ok">
+        <strong>Listo:</strong> Estado reiniciado. Puedes empezar el onboarding de nuevo.
+        <a routerLink="/onboarding">Ir al onboarding</a>
+      </p>
+    }
+  </div>
+
+  <div role="alert">
+    @if (errors()['reset']; as err) {
+      <div class="alert alert-error">
+        <p><strong>Error:</strong> {{ err.message }}</p>
+        <p class="hint">Código: {{ err.code }}</p>
+      </div>
+    }
+  </div>
+
+  @if (!confirmingReset()) {
+    <button
+      id="reset-open"
+      type="button"
+      class="btn btn-danger"
+      [attr.aria-disabled]="ariaDisabled()"
+      (click)="askReset()"
+    >
+      Reiniciar mi estado…
+    </button>
+  } @else {
+    <div role="group" aria-labelledby="reset-confirm-text" class="alert alert-info" (keydown.escape)="cancelReset()">
+      <p id="reset-confirm-text" tabindex="-1">
+        ¿Seguro que quieres reiniciar tu estado? Se perderá todo tu progreso de onboarding.
+      </p>
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-danger"
+          [attr.aria-disabled]="ariaDisabled()"
+          [attr.aria-busy]="running() === 'reset'"
+          (click)="confirmReset()"
+        >
+          @if (running() === 'reset') { Reiniciando… } @else { Sí, reiniciar }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="cancelReset()">Cancelar</button>
+      </div>
+      <p class="hint">Pulsa Esc para cancelar.</p>
+    </div>
+  }
+</section>

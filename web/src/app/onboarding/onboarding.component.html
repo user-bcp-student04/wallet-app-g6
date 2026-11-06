@@ -1,0 +1,271 @@
+<!-- src/app/onboarding/onboarding.component.html -->
+<h1>Activa tu wallet</h1>
+
+@if (loading()) {
+  <p role="status">Cargando tu progreso…</p>
+} @else if (loadError()) {
+  <div role="alert" class="alert alert-error">
+    <p><strong>Error:</strong> {{ loadError()!.message }}</p>
+    <p class="hint">Código: {{ loadError()!.code }}</p>
+    <button type="button" class="btn" (click)="load()">Reintentar</button>
+  </div>
+} @else {
+  @if (state(); as s) {
+    <section aria-labelledby="wallet-h" class="panel">
+      <h2 id="wallet-h">Estado de la wallet</h2>
+      <p>
+        <strong>{{ walletLabel(s.wallet_status) }}</strong>
+      </p>
+    </section>
+
+    <section aria-labelledby="pasos-h">
+      <h2 id="pasos-h">Pasos del onboarding</h2>
+      <ol class="steps">
+        @for (step of s.steps; track step.id) {
+          <li [attr.aria-current]="step.status === 'CURRENT' ? 'step' : null">
+            <span>{{ step.order }}.</span>
+            <span>{{ stepLabel(step.id) }}</span>
+            <span class="badge">{{ stepStatusLabel(step.status) }}</span>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <div role="status">
+      @if (success()) {
+        <p class="alert alert-ok"><strong>Listo:</strong> {{ success() }}</p>
+      }
+    </div>
+    <div role="alert">
+      @if (actionError()) {
+        <div class="alert alert-error">
+          <p><strong>Error:</strong> {{ actionError()!.message }}</p>
+          <p class="hint">Código: {{ actionError()!.code }}</p>
+        </div>
+      }
+    </div>
+
+    @switch (s.current_step) {
+      @case ('registro') {
+        <section aria-labelledby="registro-h" class="panel">
+          <h2 id="registro-h" tabindex="-1" data-step-heading>Paso 1: Registro</h2>
+          <form [formGroup]="registroForm" (ngSubmit)="submitRegistro()" novalidate>
+            <div class="field">
+              <label for="reg-doc">Número de documento</label>
+              <p id="reg-doc-hint" class="hint">
+                Entorno de pruebas: debe comenzar con TEST- y seguir con letras, números o guiones.
+                Ejemplo: TEST-0001.
+              </p>
+              <input
+                id="reg-doc"
+                type="text"
+                formControlName="document_number"
+                autocomplete="off"
+                maxlength="64"
+                [attr.aria-invalid]="docError(registroForm.controls.document_number) ? 'true' : null"
+                [attr.aria-describedby]="docError(registroForm.controls.document_number) ? 'reg-doc-hint reg-doc-err' : 'reg-doc-hint'"
+              />
+              @if (docError(registroForm.controls.document_number); as msg) {
+                <p id="reg-doc-err" class="field-error">{{ msg }}</p>
+              }
+            </div>
+            <div class="actions">
+              <button
+                type="submit"
+                class="btn"
+                [attr.aria-disabled]="ariaDisabled()"
+                [attr.aria-busy]="busy() === 'registro'"
+              >
+                @if (busy() === 'registro') { Guardando… } @else { Continuar }
+              </button>
+            </div>
+          </form>
+        </section>
+      }
+
+      @case ('kyc') {
+        <section aria-labelledby="kyc-h" class="panel">
+          <h2 id="kyc-h" tabindex="-1" data-step-heading>Paso 2: Verificación KYC</h2>
+          <p class="hint">Crea una verificación de prueba y elige el escenario que quieres simular.</p>
+
+          @if (scenariosLoading()) {
+            <p role="status">Cargando escenarios…</p>
+          }
+          @if (scenariosError()) {
+            <div role="alert" class="alert alert-error">
+              <p><strong>Error:</strong> {{ scenariosError()!.message }}</p>
+              <p class="hint">Código: {{ scenariosError()!.code }}</p>
+              <button type="button" class="btn btn-secondary" (click)="loadScenarios()">Reintentar</button>
+            </div>
+          } @else if (!scenariosLoading() && scenarios().length === 0) {
+            <p class="alert alert-info">No hay escenarios disponibles.</p>
+          }
+
+          <form [formGroup]="kycForm" (ngSubmit)="createVerification()" novalidate>
+            <div class="field">
+              <label for="kyc-doc">Número de documento</label>
+              <p id="kyc-doc-hint" class="hint">Debe comenzar con TEST-. Ejemplo: TEST-0001.</p>
+              <input
+                id="kyc-doc"
+                type="text"
+                formControlName="document_number"
+                autocomplete="off"
+                maxlength="64"
+                [attr.aria-invalid]="docError(kycForm.controls.document_number) ? 'true' : null"
+                [attr.aria-describedby]="docError(kycForm.controls.document_number) ? 'kyc-doc-hint kyc-doc-err' : 'kyc-doc-hint'"
+              />
+              @if (docError(kycForm.controls.document_number); as msg) {
+                <p id="kyc-doc-err" class="field-error">{{ msg }}</p>
+              }
+            </div>
+
+            <div class="field">
+              <label for="kyc-scenario">Escenario</label>
+              <p id="kyc-scenario-hint" class="hint">Resultado que simulará la verificación.</p>
+              <select
+                id="kyc-scenario"
+                formControlName="scenario"
+                [attr.aria-invalid]="scenarioInvalid() ? 'true' : null"
+                [attr.aria-describedby]="scenarioInvalid() ? 'kyc-scenario-hint kyc-scenario-err' : 'kyc-scenario-hint'"
+              >
+                <option value="">Selecciona un escenario</option>
+                @for (scenario of scenarios(); track scenario.name) {
+                  <option [value]="scenario.name">{{ scenario.name }} — {{ scenario.description }}</option>
+                }
+              </select>
+              @if (scenarioInvalid()) {
+                <p id="kyc-scenario-err" class="field-error">Selecciona un escenario.</p>
+              }
+            </div>
+
+            <div class="actions">
+              <button
+                type="submit"
+                class="btn"
+                [attr.aria-disabled]="ariaDisabled()"
+                [attr.aria-busy]="busy() === 'crear-kyc'"
+              >
+                @if (busy() === 'crear-kyc') { Creando verificación… } @else { Crear verificación }
+              </button>
+            </div>
+          </form>
+
+          @if (verification(); as v) {
+            <section aria-labelledby="ver-h" class="panel">
+              <h3 id="ver-h">Última verificación</h3>
+              <dl class="data">
+                <dt>Identificador</dt>
+                <dd>{{ v.verification_id }}</dd>
+                <dt>Documento</dt>
+                <dd>{{ v.document_number }}</dd>
+                <dt>Escenario</dt>
+                <dd>{{ v.scenario }}</dd>
+                <dt>Estado</dt>
+                <dd><strong>{{ verificationLabel(v.status) }}</strong></dd>
+                <dt>Creada</dt>
+                <dd>{{ v.created_at | date: 'dd/MM/yyyy HH:mm:ss' }}</dd>
+                @if (v.decided_at) {
+                  <dt>Resuelta</dt>
+                  <dd>{{ v.decided_at | date: 'dd/MM/yyyy HH:mm:ss' }}</dd>
+                }
+              </dl>
+
+              @if (v.status === 'PENDING') {
+                <p class="hint">La verificación está pendiente: registra una decisión o actualiza su estado.</p>
+                <div class="actions">
+                  <button
+                    type="button"
+                    class="btn"
+                    [attr.aria-disabled]="ariaDisabled()"
+                    [attr.aria-busy]="busy() === 'decidir-kyc'"
+                    (click)="decide('APPROVED')"
+                  >
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    [attr.aria-disabled]="ariaDisabled()"
+                    [attr.aria-busy]="busy() === 'decidir-kyc'"
+                    (click)="decide('REJECTED')"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    [attr.aria-disabled]="ariaDisabled()"
+                    [attr.aria-busy]="busy() === 'actualizar-kyc'"
+                    (click)="refreshVerification()"
+                  >
+                    Actualizar estado
+                  </button>
+                </div>
+              } @else if (v.status === 'APPROVED') {
+                <p class="hint">Verificación aprobada: ya puedes completar este paso.</p>
+              } @else {
+                <p class="hint">Esta verificación no está aprobada. Crea una nueva para continuar.</p>
+              }
+            </section>
+          }
+
+          <div class="actions">
+            <button
+              type="button"
+              class="btn"
+              [attr.aria-disabled]="ariaDisabled()"
+              [attr.aria-busy]="busy() === 'paso-kyc'"
+              (click)="completeStep('kyc')"
+            >
+              @if (busy() === 'paso-kyc') { Completando… } @else { Completar paso de verificación }
+            </button>
+          </div>
+        </section>
+      }
+
+      @case ('activacion') {
+        <section aria-labelledby="act-h" class="panel">
+          <h2 id="act-h" tabindex="-1" data-step-heading>Paso 3: Activación</h2>
+          <p>Tu verificación está completa. Activa la wallet para terminar el onboarding.</p>
+          <div class="actions">
+            <button
+              type="button"
+              class="btn"
+              [attr.aria-disabled]="ariaDisabled()"
+              [attr.aria-busy]="busy() === 'paso-activacion'"
+              (click)="completeStep('activacion')"
+            >
+              @if (busy() === 'paso-activacion') { Activando… } @else { Activar wallet }
+            </button>
+          </div>
+        </section>
+      }
+
+      @default {
+        <section aria-labelledby="fin-h" class="panel">
+          <h2 id="fin-h" tabindex="-1" data-step-heading>Wallet activa</h2>
+          <p>Completaste todos los pasos del onboarding.</p>
+          @if (s.duration_seconds !== null) {
+            <p>Duración del onboarding: <strong>{{ s.duration_seconds }} s</strong>.</p>
+          }
+        </section>
+      }
+    }
+
+    <section aria-labelledby="pagos-h" class="panel">
+      <h2 id="pagos-h">Pagos de bajo monto</h2>
+      @if (s.low_amount_payments_enabled) {
+        <p>Tu wallet está activa y puedes acceder a pagos de bajo monto.</p>
+        <a routerLink="/pagos" class="btn">Ir a pagos de bajo monto</a>
+      } @else {
+        <p id="pagos-ayuda">
+          No disponible todavía. Se habilita cuando la wallet esté activa (estado actual:
+          {{ walletLabel(s.wallet_status) }}).
+        </p>
+        <button type="button" class="btn" aria-disabled="true" aria-describedby="pagos-ayuda">
+          Ir a pagos de bajo monto
+        </button>
+      }
+    </section>
+  }
+}
