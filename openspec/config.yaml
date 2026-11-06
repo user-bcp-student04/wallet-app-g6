@@ -1,0 +1,60 @@
+schema: spec-driven
+
+context: |
+  Proyecto wallet-app-g6 (generador CrewAI con agentes Arquitecto, Backend, Frontend, Pruebas, Seguridad y Chapter).
+  Se trabaja una historia a la vez; cada cambio parte de un GitHub Issue confirmado y priorizado
+  en el Project wallet-project-g6.
+  No resolver deuda adicional fuera del Issue.
+  tasks.md debe alinearse con Issue, proposal, specs y design.
+  Escribir los artefactos en español.
+
+rules:
+  proposal:
+    - Referenciar el GitHub Issue.
+    - Separar alcance y fuera de alcance.
+  specs:
+    - Usar requisitos verificables y escenarios observables.
+  design:
+    - Identificar contratos, riesgos, estrategia incremental y rollback cuando aplique.
+  tasks:
+    - Mantener las tareas dentro del alcance aprobado.
+    - Usar tareas pequeñas y verificables.
+
+operations:
+  apply:
+    guidance:
+      - Seguir las tareas pendientes de tasks.md.
+      - Marcar como completado solo trabajo ejecutado y validado.
+      - Implementar únicamente el alcance aprobado.
+      - Ejecutar pruebas relevantes (python tools/verify.py) y registrar resultados.
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
