@@ -1,0 +1,81 @@
+# W2 Pago a contacto
+
+Esta sección cubre el envío de dinero a `contact-demo`. La aplicación debe mostrar el monto, el destinatario y el estado final, además de permitir consultar el historial y el comprobante.
+
+## Flujo de pago
+
+1. Consulta `GET /wallets/wallet-demo` para ver el saldo contable, reservado y disponible. El saldo disponible descuenta las reservas de los pagos pendientes.
+2. Envía `POST /payments` con `Content-Type: application/json` e `Idempotency-Key: contacto-001`. Usa `{"walletId":"wallet-demo","recipient":"contact-demo","amountCents":1500,"currency":"PEN","scenario":"APPROVED"}` para pagar S/ 15.00.
+3. Guarda el ID del pago. Mientras esté en `PENDING`, muestra que la confirmación está en proceso.
+4. Consulta `GET /control/events`, copia el `id` del evento de tu pago y envía `POST /callbacks/payments` con `{"eventId":"ID_DEL_EVENTO"}`. Basta con entregarlo una vez.
+5. Consulta `GET /payments/{id}` y `GET /payments/{id}/receipt`. Para mostrar el historial de esa wallet, usa `GET /payments?walletId=wallet-demo`.
+
+## Qué debes comprobar
+
+- `APPROVED` termina en `SUCCEEDED` después del evento. El saldo se descuenta una sola vez y el comprobante queda disponible.
+- `REJECTED` termina en `REJECTED` después del evento. Se libera la reserva sin cobrar el monto.
+- `DELAYED_APPROVAL` permanece pendiente hasta que envíes `POST /control/provider/{id}/complete` con `{"status":"SUCCEEDED"}` y entregues el evento generado. En esta ruta usa el ID del pago.
+- Un monto mayor al saldo disponible devuelve `409` antes de enviar la operación al proveedor.
+
+Los importes son enteros en céntimos. `1500` significa S/ 15.00. Los destinatarios son externos y el mock no acredita otra wallet local.
+
+## APIs de esta historia
+
+### `POST /payments`
+
+Crea una intención PENDING y reserva saldo; responde 202. Requiere Idempotency-Key de 1 a 200 caracteres, única por wallet. Misma clave y contenido devuelve 200 con el pago actual; contenido distinto devuelve 409 IDEMPOTENCY_CONFLICT. APPROVED y REJECTED generan evento; PENDING y DELAYED_APPROVAL esperan control manual. TIMEOUT_AFTER_PROCESSING devuelve 504 con paymentId, pero ya creó el pago y el proveedor lo aprobó. PROVIDER_ERROR devuelve 503 sin operación ni reserva. Confirma por callback o /resolve. Moneda predeterminada PEN, escenario APPROVED. 409 WALLET_NOT_ACTIVE o INSUFFICIENT_FUNDS; 404 por wallet, destinatario o QR inexistente; 410 QR_EXPIRED; 409 QR_PAYMENT_MISMATCH si difieren comercio o monto fijo. Solo se permiten contact-demo y merchant-demo. qrId es opcional: sin él, el pago es directo.
+
+Campos del cuerpo JSON:
+
+- `walletId`: string, obligatorio. ID de wallet. Para pagos con fondos usa wallet-demo.
+- `recipient`: string, obligatorio. Destinatario externo de prueba. Valores: contact-demo, merchant-demo.
+- `amountCents`: integer, obligatorio. Importe en céntimos de PEN. 1500 = S/ 15.00.
+- `currency`: string, opcional. Solo PEN. Predeterminado PEN. Valores: PEN.
+- `scenario`: string, opcional. Escenario del proveedor simulado. Predeterminado APPROVED. Valores: APPROVED, REJECTED, PENDING, DELAYED_APPROVAL, TIMEOUT_AFTER_PROCESSING, PROVIDER_ERROR.
+- `qrId`: string, opcional. ID del QR creado en este grupo. Opcional, valida comercio, monto y vigencia.
+
+Respuestas HTTP: `200`, `202`, `400`, `404`, `409`, `410`, `503`, `504`, `413`, `429`.
+
+Campos de respuesta: `id`, `wallet_id`, `recipient`, `amount`, `status`, `scenario`, `idem`, `fingerprint`.
+
+### `GET /payments`
+
+Lista el historial de una wallet. walletId es opcional y vale wallet-demo por defecto. Una wallet sin pagos o inexistente produce []. Sin paginación ni filtros de fechas. No lista todas las wallets del grupo.
+
+Respuestas HTTP: `200`.
+
+Respuesta: lista de objetos con `id`, `wallet_id`, `recipient`, `amount`, `status`, `scenario`, `idem`, `fingerprint`. Una lista vacía se representa como `[]`.
+
+### `GET /payments/{id}`
+
+Consulta el estado local del pago. No consulta al proveedor ni confirma eventos. Pago inexistente: 404 NOT_FOUND.
+
+Respuestas HTTP: `200`, `404`.
+
+Campos de respuesta: `id`, `wallet_id`, `recipient`, `amount`, `status`, `scenario`, `idem`, `fingerprint`.
+
+### `GET /payments/{id}/receipt`
+
+Obtiene el comprobante cuando el pago está SUCCEEDED o REVERSED. En PENDING o REJECTED devuelve 409 RECEIPT_NOT_READY. No genera PDF. Pago inexistente: 404.
+
+Respuestas HTTP: `200`, `404`, `409`.
+
+Campos de respuesta: `receiptId`, `paymentId`, `amountCents`, `currency`, `recipient`, `status`.
+
+### `GET /provider/payments/{id}`
+
+Consulta el estado del proveedor simulado usando el mismo ID del pago. Puede diferir del estado local si falta el callback. No aplica el resultado a la wallet. ID inexistente: 404.
+
+Respuestas HTTP: `200`, `404`.
+
+Campos de respuesta: `id`, `amount`, `status`.
+
+## Material relacionado
+
+[Leer la historia de usuario](/docs/H2_pago_contacto.html)
+
+[Conectar y confirmar pagos](/docs/mocks/)
+
+[Controles para preparar escenarios](/docs/mocks/controles.html)
+
+[Cobertura frente a los criterios del reto](/docs/mocks/alcance.html)
