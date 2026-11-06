@@ -28,23 +28,76 @@ El sistema DEBE bloquear el avance al siguiente paso cuando falte información o
 - **THEN** el avance se bloquea
 - **AND** se muestra un mensaje que indica por qué el dato es inválido y cómo corregirlo
 
+#### Scenario: Documento fuera del formato permitido
+
+- **GIVEN** un usuario que ingresa un tipo de documento distinto de `TEST` o un documento sin el prefijo `TEST-`
+- **WHEN** intenta avanzar
+- **THEN** el avance se bloquea
+- **AND** se muestra un mensaje que indica que solo se admiten documentos ficticios con prefijo `TEST-`
+
+### Requirement: Verificación de identidad simulada (KYC)
+
+El sistema DEBE crear la verificación y la wallet mediante `POST /kyc/verifications` con `documentType` `TEST`, `document` con prefijo `TEST-` y `scenario` opcional (predeterminado `APPROVED`), y DEBE conservar los identificadores de verificación (`id`) y de wallet (`wallet_id`) devueltos para consultas posteriores con `GET /kyc/verifications/{id}` y `GET /wallets/{id}`. La verificación es simulada: no valida documentos reales ni evita registros repetidos.
+
+#### Scenario: Verificación aprobada
+
+- **GIVEN** un usuario que envía un documento `TEST-` válido con escenario `APPROVED`
+- **WHEN** la API responde `201`
+- **THEN** la verificación y la wallet tienen estado `ACTIVE`
+- **AND** la wallet tiene saldo cero
+
+#### Scenario: Verificación rechazada
+
+- **GIVEN** un usuario cuya verificación se resuelve con escenario `REJECTED`
+- **WHEN** la API responde `201`
+- **THEN** la wallet tiene estado `REJECTED`
+- **AND** la interfaz informa que la cuenta fue rechazada
+
+#### Scenario: Verificación en revisión manual
+
+- **GIVEN** un usuario cuya verificación se resuelve con escenario `MANUAL_REVIEW`
+- **WHEN** la API responde `201`
+- **THEN** la wallet tiene estado `PENDING` y se abre un caso de soporte `KYC_REVIEW` consultable en `GET /support/cases`
+- **AND** la interfaz explica que falta una decisión
+
+#### Scenario: Decisión sobre una verificación pendiente
+
+- **GIVEN** una verificación en estado `PENDING`
+- **WHEN** se envía `POST /kyc/verifications/{id}/decision` con `ACTIVE` o `REJECTED`
+- **THEN** la wallet adopta el estado decidido y el caso de soporte se resuelve
+- **AND** repetir la misma decisión conserva el resultado, y cambiar una decisión final devuelve `409 DECISION_CONFLICT`
+
+#### Scenario: Proveedor KYC no disponible
+
+- **GIVEN** un usuario cuya verificación se resuelve con escenario `UNAVAILABLE`
+- **WHEN** la API responde `503 KYC_UNAVAILABLE`
+- **THEN** no se crea ninguna wallet
+- **AND** se muestra un mensaje de indisponibilidad del servicio que permite reintentar
+
 ### Requirement: Activación de la wallet al finalizar el onboarding
 
-El sistema DEBE cambiar el estado de la wallet a activo solo cuando el onboarding finaliza correctamente, y DEBE permitir entonces el acceso al punto de entrada de pagos de bajo monto.
+El sistema DEBE cambiar el estado de la wallet a activo (`ACTIVE`) solo cuando el onboarding finaliza correctamente, y DEBE permitir entonces el acceso al punto de entrada de pagos de bajo monto. Una wallet `PENDING` o `REJECTED` NO DEBE permitir pagos: el pago con ella devuelve `409 WALLET_NOT_ACTIVE`.
 
 #### Scenario: Onboarding finalizado correctamente
 
-- **GIVEN** un usuario que completó todos los pasos requeridos sin errores
+- **GIVEN** un usuario que completó todos los pasos requeridos sin errores y cuya verificación quedó `ACTIVE`
 - **WHEN** se cierra el flujo de onboarding
-- **THEN** el estado de la wallet es activo
+- **THEN** el estado de la wallet es `ACTIVE`
 - **AND** el usuario puede acceder al punto de entrada de pagos de bajo monto
 
 #### Scenario: Onboarding incompleto
 
-- **GIVEN** un usuario que no completó todos los pasos requeridos
-- **WHEN** consulta el estado de su wallet
-- **THEN** el estado de la wallet no es activo
+- **GIVEN** un usuario que no completó todos los pasos requeridos, o cuya wallet está `PENDING` o `REJECTED`
+- **WHEN** consulta el estado de su wallet con `GET /wallets/{id}`
+- **THEN** el estado de la wallet no es `ACTIVE`
 - **AND** no puede acceder al punto de entrada de pagos de bajo monto
+
+#### Scenario: Wallet inexistente
+
+- **GIVEN** un identificador de wallet que no existe en el grupo
+- **WHEN** se consulta `GET /wallets/{id}`
+- **THEN** la API responde `404 NOT_FOUND`
+- **AND** la interfaz no muestra un estado de wallet
 
 ### Requirement: Registro de eventos de onboarding
 
@@ -94,13 +147,17 @@ El sistema DEBE producir una salida analítica de onboarding con el conteo mensu
 - No cambiar el mapeo de rutas `output/<origen>` → repo del producto de `crew/publish_pr.py`.
 - No cambiar el formato de extracción de código (ruta completa del archivo en el bloque) que exigen Backend y Frontend.
 - Los contratos nuevos (API de onboarding y estado de wallet, esquema de eventos, salida analítica) se definen en diseño y no modifican los protegidos.
-- El alcance excluye pago por contacto o QR, recarga, validación de acceso en transporte, conciliación, definición de KYC y despliegue multipaís.
+- El contrato W1 del mock (`docs/bcp-wallet-mock-openapi.yaml`, `docs/H1_registro`) es la fuente para KYC y wallet: `POST /kyc/verifications`, `GET /kyc/verifications/{id}`, `POST /kyc/verifications/{id}/decision` y `GET /wallets/{id}`; importes en céntimos PEN; cuerpos de hasta 65536 bytes (`413` si se excede); `429 GROUP_LIMIT_RESET_REQUIRED` solo en cloud.
+- Solo se usan documentos ficticios (`documentType` `TEST`, `document` con prefijo `TEST-`); no se envían documentos reales.
+- El mock no registra eventos de onboarding ni métricas: esos contratos los define el diseño.
+- El alcance excluye pago por contacto o QR, recarga, validación de acceso en transporte, conciliación, reglas de KYC reales (se usa solo el KYC simulado) y despliegue multipaís.
 
 ## Acceptance Evidence
 
 - Prueba o evidencia de UI/API que muestre la secuencia de pasos y el paso actual.
-- Prueba con datos faltantes e inválidos que demuestre el bloqueo y el mensaje accionable.
-- Prueba que verifique el estado de wallet activo tras un onboarding exitoso y no activo tras uno incompleto.
+- Prueba con datos faltantes e inválidos (incluido documento sin prefijo `TEST-`) que demuestre el bloqueo y el mensaje accionable.
+- Prueba de los escenarios KYC `APPROVED`, `REJECTED`, `MANUAL_REVIEW` (con decisión `ACTIVE`/`REJECTED`) y `UNAVAILABLE` contra el mock.
+- Prueba que verifique el estado de wallet `ACTIVE` tras un onboarding exitoso y no activo tras uno incompleto, `PENDING` o `REJECTED`.
 - Registro de eventos de un onboarding completo y de uno abandonado.
 - Consulta o reporte de la mediana de duración de la cohorte MVP en Perú.
 - Salida analítica mensual con nuevos usuarios activos y gasto de adquisición atribuido.
@@ -109,7 +166,8 @@ El sistema DEBE producir una salida analítica de onboarding con el conteo mensu
 ## Open Questions (pendientes de revisión humana)
 
 - ¿Qué eventos y marcas de tiempo definen oficialmente el inicio y el fin de la duración de onboarding?
-- ¿Cuáles son los pasos y datos obligatorios, dado que el KYC está pendiente con cumplimiento y producto?
+- ¿Cuáles son los pasos y datos obligatorios adicionales al KYC simulado (`documentType`, `document`), dado que las reglas de KYC reales están pendientes con cumplimiento y producto?
+- ¿Cómo gestiona la interfaz el tiempo de espera de una wallet `PENDING` hasta la decisión humana y cuenta ese tiempo en la duración del onboarding?
 - ¿Qué significa "usuario activo" para el MAU y de qué fuente proviene el gasto de adquisición para el CAC?
 - ¿Se mide la mediana sobre el 100% de la cohorte MVP o sobre una muestra?
 - ¿Se confirma el listado de contratos protegidos derivado del repositorio?
