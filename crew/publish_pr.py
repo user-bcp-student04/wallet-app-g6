@@ -1,4 +1,4 @@
-"""Paso final: abre un PR (borrador) con el código y las specs en <GITHUB_OWNER>/ai-labs.
+"""Paso final: abre un PR (borrador) con el código y las specs en <GITHUB_OWNER>/wallet-app-g6.
 
 Solo corre tras la aprobación humana explícita. Usa el CLI `gh` con la sesión
 de quien ejecuta el flujo; si esa cuenta no puede hacer push al repo destino,
@@ -6,7 +6,7 @@ publica la rama en un fork y abre el PR desde ahí.
 
 Variables de entorno:
   GITHUB_OWNER    owner del repo destino (obligatoria).
-  PR_REPO         nombre del repo destino (por defecto ai-labs).
+  PR_REPO         nombre del repo destino (por defecto wallet-app-g6).
   PR_BASE_BRANCH  rama base (por defecto, la rama por defecto del repo).
 """
 
@@ -39,7 +39,7 @@ def target_repo() -> str | None:
     owner = os.getenv("GITHUB_OWNER", "").strip()
     if not owner or owner.startswith("<"):
         return None
-    return f"{owner}/{os.getenv('PR_REPO', 'ai-labs').strip() or 'ai-labs'}"
+    return f"{owner}/{os.getenv('PR_REPO', 'wallet-app-g6').strip() or 'wallet-app-g6'}"
 
 
 def slugify(text: str) -> str:

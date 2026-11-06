@@ -1063,7 +1063,7 @@ def main():
 
 
 def publish_step(checkpoint: dict, feature: dict, issue_number, steps, generated_files, chapter_text) -> None:
-    """Último paso: PR en borrador a <GITHUB_OWNER>/ai-labs, solo con aprobación humana."""
+    """Último paso: PR en borrador a <GITHUB_OWNER>/wallet-app-g6, solo con aprobación humana."""
     repo = publish_pr.target_repo()
     print("\n" + "─" * 60)
     print("▶ PASO: Pull request")
@@ -1072,7 +1072,7 @@ def publish_step(checkpoint: dict, feature: dict, issue_number, steps, generated
         print(f"✅ PR ya abierto en una ejecución anterior: {checkpoint['pr']['url']}")
         return
     if not repo:
-        print("  ⚠ Define GITHUB_OWNER en .env para abrir el PR en <owner>/ai-labs. Paso omitido.")
+        print("  ⚠ Define GITHUB_OWNER en .env para abrir el PR en <owner>/wallet-app-g6. Paso omitido.")
         return
 
     slug = publish_pr.slugify(feature["title"])

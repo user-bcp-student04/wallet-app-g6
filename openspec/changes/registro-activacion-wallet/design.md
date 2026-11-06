@@ -1,6 +1,6 @@
 ## Context
 
-- `wallet-app-g6` es un generador CrewAI. `main.py` carga un feature del backlog (MCP Projects), cada agente genera artefactos en `output/` y `crew/publish_pr.py` los publica mediante PR en el repo destino (`GITHUB_OWNER`/`PR_REPO`, por defecto `ai-labs`).
+- `wallet-app-g6` es un generador CrewAI. `main.py` carga un feature del backlog (MCP Projects), cada agente genera artefactos en `output/` y `crew/publish_pr.py` los publica mediante PR en el repo destino (`GITHUB_OWNER`/`PR_REPO`, por defecto `wallet-app-g6`).
 - No existe lógica de onboarding, estado de wallet ni eventos analíticos en este repositorio.
 - El código de producto se genera hacia `api/` (FastAPI), `web/` (Angular) y `db/`; las specs van a `docs/crewai/<slug>/`.
 - Spec de entrada: `specs/wallet-onboarding/spec.md`.
@@ -104,7 +104,7 @@ Transversal: `413` y `429 GROUP_LIMIT_RESET_REQUIRED` se prueban una vez sobre e
 
 ## Risks / Trade-offs
 
-- Repo destino igual al repo del generador: el PR añade `api/`, `web/`, `db/` y `docs/crewai/` junto al código del pipeline -> el PR no debe modificar `agents/`, `crew/`, `main.py` ni `tools/` salvo ajustes aprobados; `PR_REPO` por defecto es `ai-labs`, por lo que debe definirse explícitamente.
+- Repo destino igual al repo del generador: el PR añade `api/`, `web/`, `db/` y `docs/crewai/` junto al código del pipeline -> el PR no debe modificar `agents/`, `crew/`, `main.py` ni `tools/` salvo ajustes aprobados; `PR_REPO` por defecto es `wallet-app-g6`, por lo que debe definirse explícitamente.
 - Instrucciones del Arquitecto orientadas a otro caso (subida de archivos, dependencias) -> evaluar la salida y ajustar solo si es necesario.
 - Datos personales en eventos sin tratamiento definido -> definirlo con seguridad y cumplimiento.
 - KYC real sin definir impide concretar pasos y datos obligatorios adicionales -> se usa solo el KYC simulado y se bloquea el resto hasta su definición.
