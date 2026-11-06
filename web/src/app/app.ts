@@ -1,21 +1,58 @@
-import { Component } from '@angular/core';
-import { ConfigPanel } from './components/config-panel';
-import { EventsPanel } from './components/events-panel';
-import { OnboardingFlow } from './components/onboarding-flow';
-import { ServiceConsole } from './components/service-console';
+import { Component, computed, inject, signal } from '@angular/core';
+import { DashboardView } from './components/dashboard-view';
+import { LoginView } from './components/login-view';
+import { RegisterView } from './components/register-view';
+import { TestConsole } from './components/test-console';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
-  imports: [ConfigPanel, OnboardingFlow, ServiceConsole, EventsPanel],
+  imports: [LoginView, RegisterView, DashboardView, TestConsole],
   template: `
-    <main>
-      <h1>Consola de onboarding de wallet</h1>
-      <app-config-panel />
-      <app-onboarding-flow />
-      <app-service-console />
-      <app-events-panel />
-    </main>
+    @if (auth.user(); as user) {
+      <header class="topbar">
+        <span class="brand">Wallet</span>
+        <nav aria-label="Navegación principal">
+          <button type="button" class="btn btn-link" [class.current]="view() === 'home'" (click)="view.set('home')">
+            Inicio
+          </button>
+          @if (isAdmin()) {
+            <button
+              type="button"
+              class="btn btn-link"
+              [class.current]="view() === 'console'"
+              (click)="view.set('console')"
+            >
+              Consola de pruebas
+            </button>
+          }
+          <span class="user">{{ user.name }}</span>
+          <button type="button" class="btn btn-link" (click)="logout()">Cerrar sesión</button>
+        </nav>
+      </header>
+      <main class="content">
+        @if (view() === 'console' && isAdmin()) {
+          <app-test-console />
+        } @else {
+          <app-dashboard-view />
+        }
+      </main>
+    } @else if (guest() === 'login') {
+      <app-login-view (registerRequested)="guest.set('register')" />
+    } @else {
+      <app-register-view (loginRequested)="guest.set('login')" />
+    }
   `,
-  styleUrl: './app.css',
 })
-export class App {}
+export class App {
+  protected readonly auth = inject(AuthService);
+  protected readonly view = signal<'home' | 'console'>('home');
+  protected readonly guest = signal<'register' | 'login'>('register');
+  protected readonly isAdmin = computed(() => this.auth.user()?.role === 'admin');
+
+  protected logout(): void {
+    this.view.set('home');
+    this.guest.set('login');
+    this.auth.logout();
+  }
+}

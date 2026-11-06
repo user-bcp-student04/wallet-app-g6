@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wallet de transporte público · Un solo medio de pago</title>
+  <meta name="description" content="Wallet para pagar y recargar el acceso al tren, metropolitano y corredores auxiliares desde el celular, sin colas ni tarjeta física.">
+  <style>
+    :root {
+      --purple: #6b1f80;
+      --purple-dark: #4d1560;
+      --teal: #12c3b0;
+      --teal-dark: #0e9e8e;
+      --dark: #1b2430;
+      --bg: #f3f1f6;
+      --border: #dcd7e3;
+      --danger: #b00020;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--dark);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    h1, h2, h3, p { margin: 0 0 .75rem; }
+    a { color: inherit; }
+    .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
+    section { padding: 3.5rem 0; }
+    .eyebrow {
+      display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--teal-dark); margin-bottom: .5rem;
+    }
+    h2.title { font-size: clamp(1.5rem, 3vw, 2rem); color: var(--purple-dark); }
+    .lead { color: #4a5565; max-width: 62ch; }
+
+    /* Navegación */
+    .nav { position: sticky; top: 0; z-index: 10; background: var(--purple); color: #fff; }
+    .nav .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; padding-top: .7rem; padding-bottom: .7rem; }
+    .brand { font-weight: 800; font-size: 1.2rem; text-decoration: none; }
+    .nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; padding: 0; }
+    .nav a.link { text-decoration: none; font-size: .9rem; opacity: .9; }
+    .nav a.link:hover, .nav a.link:focus-visible { opacity: 1; text-decoration: underline; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%); color: #fff; padding: 4rem 0; }
+    .hero .wrap { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem; align-items: center; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
+    .hero h1 em { font-style: normal; color: var(--teal); }
+    .hero p { color: #e8dcef; font-size: 1.1rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.25rem 0 0; }
+    .chip { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: .3rem .85rem; font-size: .85rem; }
+    .btn {
+      display: inline-block; border: 0; border-radius: var(--radius); background: var(--teal); color: var(--dark);
+      font-weight: 700; padding: .8rem 1.4rem; text-decoration: none; cursor: pointer; font-size: 1rem;
+    }
+    .btn:hover { background: var(--teal-dark); color: #fff; }
+    .btn-ghost { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,.5); margin-left: .5rem; }
+    .cta { margin-top: 1.5rem; }
+
+    /* Tarjetas */
+    .grid { display: grid; gap: 1.25rem; }
+    .g2 { grid-template-columns: repeat(2, 1fr); }
+    .g3 { grid-template-columns: repeat(3, 1fr); }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; }
+    .card h3 { font-size: 1.1rem; color: var(--purple-dark); }
+    .card p:last-child { margin-bottom: 0; }
+    .icon {
+      width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px;
+      background: #efe6f3; font-size: 1.5rem; margin-bottom: .8rem;
+    }
+    .icon.teal { background: #d9f6f2; }
+
+    /* Público */
+    .modes { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+    .mode { display: flex; align-items: center; gap: .6rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem 1.2rem; font-weight: 600; }
+
+    /* Problema -> solución */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem; }
+    .compare .col { border-radius: var(--radius); padding: 1.5rem; }
+    .before { background: #fff; border: 1px solid #f0c9d0; }
+    .after { background: #fff; border: 2px solid var(--teal); }
+    .col h3 { display: flex; align-items: center; gap: .5rem; font-size: 1.15rem; }
+    .before h3 { color: var(--danger); }
+    .after h3 { color: var(--teal-dark); }
+    .col ul { list-style: none; margin: 0; padding: 0; }
+    .col li { padding: .55rem 0 .55rem 1.8rem; position: relative; border-top: 1px solid #f1eef4; }
+    .col li:first-child { border-top: 0; }
+    .col li::before { position: absolute; left: 0; top: .55rem; font-weight: 800; }
+    .before li::before { content: "✕"; color: var(--danger); }
+    .after li::before { content: "✓"; color: var(--teal-dark); }
+
+    /* Valor */
+    .value-band { background: var(--purple-dark); color: #fff; }
+    .value-band .title { color: #fff; }
+    .value-band .card { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); color: #fff; }
+    .value-band .card h3 { color: var(--teal); }
+    .value-band .icon { background: rgba(255,255,255,.14); }
+
+    /* Demo del teléfono */
+    .demo { display: grid; grid-template-columns: 280px 1fr; gap: 2.5rem; align-items: center; margin-top: 1.5rem; }
+    .tabs { display: flex; flex-direction: column; gap: .6rem; }
+    .tab {
+      text-align: left; background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .9rem 1rem; cursor: pointer; font: inherit; color: inherit;
+    }
+    .tab strong { display: block; color: var(--purple-dark); }
+    .tab small { color: #5b6573; }
+    .tab[aria-selected="true"] { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal) inset; }
+    .stage { display: grid; grid-template-columns: auto 1fr; gap: 2rem; align-items: center; }
+    .phone {
+      width: 280px; background: #fff; border: 8px solid var(--dark); border-radius: 32px; overflow: hidden;
+      box-shadow: 0 18px 40px rgba(27,36,48,.25);
+    }
+    .phone .bar { background: var(--purple); color: #fff; font-weight: 700; padding: .7rem 1rem; display: flex; justify-content: space-between; font-size: .9rem; }
+    .screen { display: none; padding: 1rem; background: var(--bg); min-height: 430px; }
+    .screen.active { display: block; }
+    .mini { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: .8rem; margin-bottom: .7rem; font-size: .85rem; }
+    .mini h4 { margin: 0 0 .4rem; font-size: .95rem; }
+    .amount { font-size: 1.9rem; font-weight: 800; color: var(--purple); margin: 0; }
+    .hint { font-size: .75rem; color: #6a7380; }
+    .field { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem; background: #fff; margin: .3rem 0 .6rem; font-size: .85rem; color: #6a7380; }
+    .b { display: block; width: 100%; text-align: center; border-radius: 10px; padding: .6rem; font-weight: 700; font-size: .8rem; margin-top: .4rem; }
+    .b.teal { background: var(--teal); color: var(--dark); }
+    .b.dark { background: var(--dark); color: #fff; }
+    .b.line { border: 1px solid var(--teal-dark); color: var(--teal-dark); background: #fff; }
+    .mov { display: flex; justify-content: space-between; padding: .4rem 0; border-top: 1px solid #f1eef4; font-size: .8rem; }
+    .mov:first-of-type { border-top: 0; }
+    .mov small { display: block; color: #6a7380; }
+    .qr { width: 110px; height: 110px; margin: .6rem auto; background:
+      conic-gradient(from 90deg at 3px 3px, #0000 90deg, var(--dark) 0) 0 0 / 11px 11px; border: 6px solid #fff; outline: 2px solid var(--dark); }
+    .ok { text-align: center; padding-top: 1.2rem; }
+    .ok .tick { width: 64px; height: 64px; margin: 0 auto .8rem; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 2rem; }
+    .stage-text h3 { color: var(--purple-dark); }
+
+    /* Flujo de pasos */
+    .steps { counter-reset: s; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 1.5rem; list-style: none; padding: 0; }
+    .steps li { counter-increment: s; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; font-size: .92rem; position: relative; }
+    .steps li::before {
+      content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+      background: var(--purple); color: #fff; font-weight: 700; margin-bottom: .5rem;
+    }
+    .steps strong { display: block; color: var(--purple-dark); }
+
+    /* Restricción */
+    .notice { background: #fff8e6; border: 1px solid #f0dca0; border-left: 6px solid #e0a800; border-radius: var(--radius); padding: 1.4rem; }
+    .notice h3 { color: #7a5a00; }
+
+    /* Tecnologías */
+    .tech { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-top: 1.5rem; }
+    .tech .card { border-top: 5px solid var(--purple); }
+    .tech .card:nth-child(2n) { border-top-color: var(--teal); }
+    .tag { display: inline-block; font-size: .72rem; font-weight: 700; background: #efe6f3; color: var(--purple-dark); border-radius: 6px; padding: .15rem .5rem; margin-bottom: .5rem; }
+
+    footer { background: var(--dark); color: #c8cfda; padding: 2rem 0; font-size: .9rem; }
+    footer strong { color: #fff; }
+
+    @media (max-width: 900px) {
+      .hero .wrap, .compare, .demo, .stage { grid-template-columns: 1fr; }
+      .g3, .g4, .tech, .steps { grid-template-columns: repeat(2, 1fr); }
+      .stage { justify-items: center; }
+      .tabs { flex-direction: row; flex-wrap: wrap; }
+      .tab { flex: 1 1 200px; }
+    }
+    @media (max-width: 600px) {
+      .g2, .g3, .g4, .tech, .steps { grid-template-columns: 1fr; }
+      .nav ul { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="#inicio">Wallet</a>
+      <nav aria-label="Secciones">
+        <ul>
+          <li><a class="link" href="#publico">Público</a></li>
+          <li><a class="link" href="#problema">Problema</a></li>
+          <li><a class="link" href="#valor">Valor</a></li>
+          <li><a class="link" href="#app">La aplicación</a></li>
+          <li><a class="link" href="#restricciones">Restricciones</a></li>
+          <li><a class="link" href="#tecnologias">Tecnologías</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="inicio">
+    <div class="hero">
+      <div class="wrap">
+        <div>
+          <span class="eyebrow" style="color: var(--teal)">Transporte público · Perú</span>
+          <h1>Tu viaje empieza en el celular, <em>no en la cola</em>.</h1>
+          <p>Un solo medio de pago para acceder al tren, al metropolitano y a los corredores auxiliares. Regístrate, paga por contacto o con QR y viaja sin tarjeta física.</p>
+          <div class="chips" aria-label="Medios de transporte">
+            <span class="chip">🚆 Tren</span>
+            <span class="chip">🚌 Metropolitano</span>
+            <span class="chip">🚍 Corredores auxiliares</span>
+          </div>
+          <div class="cta">
+            <a class="btn" href="#app">Ver la aplicación</a>
+            <a class="btn btn-ghost" href="#valor">¿Qué ganamos?</a>
+          </div>
+        </div>
+        <div class="phone" aria-hidden="true" style="justify-self:center">
+          <div class="bar"><span>Wallet</span><span>Inicio</span></div>
+          <div class="screen active" style="min-height:0">
+            <div class="mini"><h4>Saldo disponible</h4><p class="amount">S/ 958.30</p><p class="hint" style="margin:0">Saldo contable S/ 973.30 · Reservado S/ 15.00</p></div>
+            <div class="mini"><h4>Transferir</h4><span class="b teal">Pago a contacto</span><span class="b teal">Pago con QR</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section id="publico">
+      <div class="wrap">
+        <span class="eyebrow">Público objetivo</span>
+        <h2 class="title">Clientes que usan el transporte público a diario</h2>
+        <p class="lead">Personas que hoy dependen de una tarjeta física recargable para entrar al sistema y que necesitan una forma más rápida y confiable de pagar.</p>
+        <div class="modes">
+          <div class="mode"><span aria-hidden="true">🚆</span> Tren</div>
+          <div class="mode"><span aria-hidden="true">🚌</span> Metropolitano</div>
+          <div class="mode"><span aria-hidden="true">🚍</span> Corredores auxiliares</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problema" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">Problema</span>
+        <h2 class="title">Del proceso actual a la wallet</h2>
+        <p class="lead">Hoy acceder y recargar implica ir a un punto físico, esperar y, a veces, volver a una sede para corregir errores.</p>
+        <div class="compare">
+          <div class="col before">
+            <h3><span aria-hidden="true">😓</span> Hoy con la tarjeta física</h3>
+            <ul>
+              <li>Tarjeta física recargable para acceder al transporte.</li>
+              <li>La tarjeta se compra en ventanillas de las sedes, con horario máximo hasta las 6 pm.</li>
+              <li>Colas para activar la tarjeta o realizar recargas.</li>
+              <li>Paso adicional de activación cuando se recarga con otras billeteras digitales.</li>
+              <li>Ante una recarga incorrecta o fallas del ATM de recargas, hay que acercarse a una sede principal: Matellini, Central o Naranjal.</li>
+            </ul>
+          </div>
+          <div class="col after">
+            <h3><span aria-hidden="true">😊</span> Con la wallet</h3>
+            <ul>
+              <li>Registro en la app con DNI, contraseña y validación por OTP.</li>
+              <li>Disponible las 24 horas, sin depender del horario de ventanilla.</li>
+              <li>Pago por contacto o con QR, sin hacer cola.</li>
+              <li>Sin paso adicional de activación: el saldo se usa al instante.</li>
+              <li>Estado de cada pago visible (exitoso, pendiente, rechazado o revertido) y movimientos a la mano.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="valor" class="value-band">
+      <div class="wrap">
+        <span class="eyebrow">Valor</span>
+        <h2 class="title">Lo que gana el cliente</h2>
+        <div class="grid g3" style="margin-top:1.5rem">
+          <article class="card">
+            <div class="icon" aria-hidden="true">💳</div>
+            <h3>Un solo medio de pago</h3>
+            <p>Agiliza el acceso al transporte público: se paga desde la misma wallet, sin llevar ni activar tarjetas adicionales.</p>
+          </article>
+          <article class="card">
+            <div class="icon" aria-hidden="true">♻️</div>
+            <h3>Sin reposición de tarjetas</h3>
+            <p>Se evita volver a comprar la tarjeta por deterioro o pérdida: el saldo vive en la cuenta digital del cliente.</p>
+          </article>
+          <article class="card">
+            <div class="icon" aria-hidden="true">✅</div>
+            <h3>Menos abandono</h3>
+            <p>Disminuye la cantidad de clientes que desisten de comprar o recargar por las colas y los pasos extra.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="app">
+      <div class="wrap">
+        <span class="eyebrow">La aplicación</span>
+        <h2 class="title">Así se ve y así funciona</h2>
+        <p class="lead">Pantallas de la wallet generada: registro, inicio con saldo y movimientos, y pago con QR con confirmación.</p>
+
+        <div class="demo">
+          <div class="tabs" role="tablist" aria-label="Pantallas de la aplicación">
+            <button class="tab" role="tab" id="t-reg" aria-controls="s-reg" aria-selected="true" data-target="s-reg"><strong>1 · Regístrate</strong><small>DNI, contraseña y OTP</small></button>
+            <button class="tab" role="tab" id="t-home" aria-controls="s-home" aria-selected="false" data-target="s-home"><strong>2 · Inicio</strong><small>Saldo y últimos movimientos</small></button>
+            <button class="tab" role="tab" id="t-qr" aria-controls="s-qr" aria-selected="false" data-target="s-qr"><strong>3 · Paga con QR</strong><small>Valida, confirma y listo</small></button>
+            <button class="tab" role="tab" id="t-ok" aria-controls="s-ok" aria-selected="false" data-target="s-ok"><strong>4 · Confirmación</strong><small>Resultado claro del pago</small></button>
+          </div>
+
+          <div class="stage">
+            <div class="phone" role="img" aria-label="Maqueta de la pantalla seleccionada">
+              <div class="bar"><span>Wallet</span><span id="bar-label">Registro</span></div>
+
+              <div class="screen active" id="s-reg" role="tabpanel" aria-labelledby="t-reg">
+                <div class="mini">
+                  <h4>Regístrate como cliente</h4>
+                  <span class="hint">Tipo de documento</span><div class="field">DNI</div>
+                  <span class="hint">Número de documento</span><div class="field">12345678</div>
+                  <span class="hint">Contraseña</span><div class="field">••••••••</div>
+                  <span class="b dark">REGISTRARME</span>
+                  <span class="b line" style="border:0">Ya tengo cuenta, ingresar</span>
+                </div>
+                <div class="mini"><h4>Valida tu registro</h4><span class="hint">Ingresa tu OTP</span><div class="field">• • • • • •</div><span class="b dark">VALIDAR OTP</span></div>
+              </div>
+
+              <div class="screen" id="s-home" role="tabpanel" aria-labelledby="t-home" hidden>
+                <div class="mini"><h4>Saldo disponible</h4><p class="amount">S/ 958.30</p><p class="hint" style="margin:0">Saldo contable S/ 973.30 · Reservado S/ 15.00</p></div>
+                <div class="mini"><h4>Transferir</h4><span class="b teal">Pago a contacto</span><span class="b teal">Pago con QR</span></div>
+                <div class="mini"><h4>Últimos movimientos</h4>
+                  <div class="mov"><span>Comercio de prueba<small>Exitoso</small></span><span>- S/ 1.00</span></div>
+                  <div class="mov"><span>Contacto demo<small>Exitoso</small></span><span>- S/ 1.00</span></div>
+                  <div class="mov"><span>Comercio de prueba<small>Exitoso</small></span><span>- S/ 6.00</span></div>
+                </div>
+              </div>
+
+              <div class="screen" id="s-qr" role="tabpanel" aria-labelledby="t-qr" hidden>
+                <div class="mini"><h4>Pago con QR</h4><span class="hint">Paga a un comercio con su QR</span>
+                  <div class="qr"></div>
+                  <span class="b line">Generar QR de prueba</span>
+                  <span class="b teal">Validar QR</span>
+                </div>
+                <div class="mini"><span class="hint">Monto (S/)</span><div class="field">1.00</div><span class="b dark">CONTINUAR</span></div>
+              </div>
+
+              <div class="screen" id="s-ok" role="tabpanel" aria-labelledby="t-ok" hidden>
+                <div class="mini ok">
+                  <div class="tick" aria-hidden="true">✓</div>
+                  <h4>¡Listo! Tu transferencia fue exitosa</h4>
+                  <p class="hint">S/ 1.00 · Comercio de prueba</p>
+                  <span class="b teal">Cerrar</span>
+                </div>
+                <div class="mini"><h4>Otros resultados posibles</h4><p class="hint" style="margin:0">Pendiente de confirmación · Rechazado · Revertido</p></div>
+              </div>
+            </div>
+
+            <div class="stage-text" id="stage-text" aria-live="polite">
+              <h3>Registro simple y seguro</h3>
+              <p>El cliente se registra con su DNI y valida su identidad con un código OTP. Menos pasos para empezar a usar la wallet.</p>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="margin-top:3rem; color:var(--purple-dark)">Flujo de un pago</h3>
+        <ol class="steps">
+          <li><strong>Elige el método</strong>Pago a contacto o pago con QR.</li>
+          <li><strong>Ingresa los datos</strong>Destinatario o QR y monto en soles.</li>
+          <li><strong>Confirma</strong>“¿Deseas confirmar la transferencia?”.</li>
+          <li><strong>Valida tu código</strong>Código de 6 dígitos.</li>
+          <li><strong>Ve el resultado</strong>Exitoso, pendiente o rechazado.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="restricciones" style="padding-top:0">
+      <div class="wrap">
+        <div class="notice">
+          <span class="eyebrow" style="color:#7a5a00">Restricciones</span>
+          <h3>Transformar el proceso actual de recaudación con presupuesto acotado</h3>
+          <p>La solución cambia la forma en que se recauda el transporte público, pero debe hacerlo dentro del presupuesto disponible. Por eso se prioriza un MVP enfocado: registro, pago por contacto o QR, estados claros del pago y reutilización de lo que ya existe, en lugar de reemplazar todo el sistema de una vez.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tecnologias" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">Tecnologías aplicadas</span>
+        <h2 class="title">Cómo se construyó</h2>
+        <div class="tech">
+          <article class="card">
+            <span class="tag">SKILLS</span>
+            <h3>Habilidades por rol</h3>
+            <p>Cada rol que interviene en SDD (arquitectura, backend, frontend, pruebas, seguridad) cuenta con skills que guían su trabajo.</p>
+          </article>
+          <article class="card">
+            <span class="tag">SDD + OPENSPEC</span>
+            <h3>Spec, proposal, design y tasks</h3>
+            <p>Se crean los artefactos asociados al alcance de cada historia: registro y activación, y pago a contacto.</p>
+          </article>
+          <article class="card">
+            <span class="tag">CREWAI</span>
+            <h3>Implementación de issues</h3>
+            <p>Un equipo de agentes toma los issues generados y los implementa de forma ordenada, rol por rol.</p>
+          </article>
+          <article class="card">
+            <span class="tag">PROMPT ENGINEERING</span>
+            <h3>Mejoras visuales</h3>
+            <p>Prompts afinados para que la aplicación sea más amigable: colores, jerarquía, mensajes claros y accesibilidad.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p><strong>Wallet de transporte público</strong> · Grupo 6</p>
+      <p style="margin:0">Maquetas basadas en las pantallas de la aplicación Angular. Los importes y movimientos mostrados son datos de demostración.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.tab');
+      var info = {
+        'Registro': ['Registro simple y seguro', 'El cliente se registra con su DNI y valida su identidad con un código OTP. Menos pasos para empezar a usar la wallet.'],
+        'Inicio': ['Todo a la vista', 'Saldo disponible, saldo reservado y los últimos movimientos con su estado, en una sola pantalla.'],
+        'Pago con QR': ['Paga sin colas', 'Se valida el QR del comercio, se indica el monto y se confirma. Sin ventanillas ni activación adicional.'],
+        'Confirmación': ['Resultado claro', 'Mensajes explícitos para pago exitoso, pendiente de confirmación o rechazado, para que el cliente siempre sepa qué pasó.']
+      };
+      var labels = { 's-reg': 'Registro', 's-home': 'Inicio', 's-qr': 'Pago con QR', 's-ok': 'Confirmación' };
+
+      function select(tab) {
+        tabs.forEach(function (t) {
+          var on = t === tab;
+          t.setAttribute('aria-selected', on);
+          t.tabIndex = on ? 0 : -1;
+          var panel = document.getElementById(t.dataset.target);
+          panel.hidden = !on;
+          panel.classList.toggle('active', on);
+        });
+        var label = labels[tab.dataset.target];
+        document.getElementById('bar-label').textContent = label;
+        document.getElementById('stage-text').innerHTML = '<h3></h3><p></p>';
+        var box = document.getElementById('stage-text');
+        box.children[0].textContent = info[label][0];
+        box.children[1].textContent = info[label][1];
+      }
+
+      tabs.forEach(function (t, i) {
+        t.tabIndex = i === 0 ? 0 : -1;
+        t.addEventListener('click', function () { select(t); });
+        t.addEventListener('keydown', function (e) {
+          var d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+          if (!d) return;
+          e.preventDefault();
+          var next = tabs[(i + d + tabs.length) % tabs.length];
+          next.focus();
+          select(next);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -66,6 +66,53 @@ export interface ApiResult<T> {
   blockedByClient: boolean;
 }
 
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'REJECTED' | 'REVERSED';
+export type PaymentRecipient = 'contact-demo' | 'merchant-demo';
+
+export interface PaymentRequest {
+  walletId: string;
+  recipient: PaymentRecipient;
+  amountCents: number;
+  currency: 'PEN';
+  scenario?: string;
+  qrId?: string | null;
+}
+
+export interface Payment {
+  id: string;
+  wallet_id: string;
+  recipient: PaymentRecipient;
+  amount: number;
+  status: PaymentStatus;
+  scenario: string;
+  idem: string;
+}
+
+export interface PendingResolution {
+  status: 'PENDING';
+  escalated: true;
+}
+
+export interface QrRequest {
+  merchantId?: 'merchant-demo';
+  amountCents?: number | null;
+  expiresInSeconds?: number;
+}
+
+export interface Qr {
+  id: string;
+  payload: string;
+  amountCents: number | null;
+  currency: 'PEN';
+}
+
+export interface ResolvedQr {
+  merchantId: string;
+  merchantName: string;
+  amountCents: number | null;
+  currency: 'PEN';
+}
+
 export type OnboardingEventType = 'STARTED' | 'STEP_COMPLETED' | 'CLOSED';
 
 export interface OnboardingEvent {

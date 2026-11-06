@@ -146,15 +146,120 @@ El sistema DEBE producir una salida analítica de onboarding con el conteo mensu
 - **THEN** incluye, por mes, el conteo de nuevos usuarios activos y el gasto de adquisición atribuido
 - **AND** permite calcular el CAC como gasto de adquisición atribuido dividido entre nuevos usuarios
 
+### Requirement: Registro de cliente con OTP previo al inicio de sesión
+
+El sistema DEBE mostrar, antes del inicio de sesión, una vista de registro de cliente con el tipo de documento `DNI`, un número de documento de solo dígitos y como máximo 8, y una contraseña de al menos 4 caracteres. Al completar el registro DEBE indicar que se ha enviado un OTP de aprobación (dato dummy `0000`) y, al validarlo, DEBE guardar las credenciales del cliente (sin guardar la contraseña en texto plano) y dar acceso al panel de saldo, movimientos y transferencias.
+
+#### Scenario: Validación de los datos de registro
+
+- **GIVEN** un usuario en el formulario de registro con el tipo de documento `DNI`
+- **WHEN** deja el número o la contraseña vacíos, ingresa un número con caracteres que no son dígitos o con más de 8 dígitos, una contraseña de menos de 4 caracteres, o un DNI ya registrado
+- **THEN** el registro se bloquea
+- **AND** se muestra un mensaje que indica qué corregir
+
+#### Scenario: Registro válido y OTP enviado
+
+- **GIVEN** un usuario que ingresa un número de documento válido de hasta 8 dígitos
+- **WHEN** completa el registro
+- **THEN** se muestra que se ha enviado un OTP de aprobación y se pide ingresarlo
+- **AND** el OTP dummy de la demo es `0000`
+
+#### Scenario: OTP incorrecto
+
+- **GIVEN** un usuario en la validación del OTP
+- **WHEN** ingresa un valor distinto de `0000`
+- **THEN** no se da acceso
+- **AND** se muestra un mensaje que indica que el OTP no es correcto
+
+#### Scenario: OTP correcto
+
+- **GIVEN** un usuario en la validación del OTP
+- **WHEN** ingresa `0000`
+- **THEN** se abre la sesión del cliente
+- **AND** se muestra el panel de saldo, movimientos y transferencias, sin acceso a la consola de pruebas
+
+### Requirement: Inicio de sesión con DNI y contraseña
+
+El sistema DEBE ofrecer un inicio de sesión responsive con DNI y contraseña. Los clientes existentes son el usuario dummy `admin` con contraseña `admin` y los clientes registrados con su contraseña. Si el DNI no corresponde a un cliente existente, DEBE mostrar el mensaje "Ups, registrate como nuevo usuario".
+
+#### Scenario: Acceso del usuario dummy
+
+- **GIVEN** un usuario en el inicio de sesión
+- **WHEN** ingresa `admin` y `admin`
+- **THEN** se muestra el panel de saldo, movimientos y transferencias
+- **AND** se habilita la consola de pruebas, solo para este usuario
+
+#### Scenario: Cliente inexistente
+
+- **GIVEN** un usuario en el inicio de sesión
+- **WHEN** ingresa un DNI que no es `admin` ni está registrado
+- **THEN** no se da acceso
+- **AND** se muestra "Ups, registrate como nuevo usuario" con acceso al registro
+
+#### Scenario: Cliente registrado
+
+- **GIVEN** un cliente que completó el registro con DNI, contraseña y OTP
+- **WHEN** inicia sesión con su DNI y su contraseña
+- **THEN** se muestra el panel de saldo, movimientos y transferencias, sin consola de pruebas
+- **AND** con una contraseña incorrecta no se da acceso
+
+#### Scenario: Datos faltantes o contraseña incorrecta
+
+- **GIVEN** un usuario en el inicio de sesión
+- **WHEN** deja un campo vacío o ingresa `admin` con una contraseña incorrecta
+- **THEN** no se da acceso
+- **AND** se muestra un mensaje que indica qué corregir
+
+### Requirement: Panel de saldo, movimientos y transferencias
+
+Después de acceder, el sistema DEBE mostrar el saldo de la cuenta (`GET /wallets/{id}` de `wallet-demo`), los últimos movimientos (`GET /payments?walletId=`) y las opciones de transferencia "Pago a contacto" y "Pago con QR".
+
+#### Scenario: Saldo y movimientos
+
+- **GIVEN** un cliente con sesión
+- **WHEN** abre el panel
+- **THEN** ve el saldo disponible, el contable y el reservado en soles
+- **AND** ve hasta 5 movimientos, el más reciente primero, con destinatario, estado e importe
+
+#### Scenario: Panel sin movimientos o con error de carga
+
+- **GIVEN** un cliente con sesión
+- **WHEN** no hay movimientos o falla la carga
+- **THEN** se muestra un estado vacío o un mensaje accionable con la opción de reintentar
+
+### Requirement: Transferencia a contacto y con QR
+
+El sistema DEBE permitir transferir por contacto (`POST /payments` a `contact-demo`) y con QR (`POST /qrs/resolve` y `POST /payments` a `merchant-demo` con `qrId`) mediante un flujo de método, datos, confirmación, código de validación y resultado. Cada pago DEBE enviar `Idempotency-Key` y, si queda `PENDING`, confirmarse con `POST /payments/{id}/resolve`.
+
+#### Scenario: Transferencia exitosa a contacto
+
+- **GIVEN** un cliente que elige "Pago a contacto" e ingresa un monto válido menor o igual a su saldo disponible
+- **WHEN** confirma, ingresa el código de validación mostrado y aprueba
+- **THEN** se muestra el resultado exitoso con destinatario, monto y operación
+- **AND** al cerrar se actualizan el saldo y los movimientos
+
+#### Scenario: Transferencia con QR
+
+- **GIVEN** un cliente que elige "Pago con QR" e ingresa o genera un texto `qrmock:ID`
+- **WHEN** valida el QR, completa el monto si es abierto y aprueba con el código de validación
+- **THEN** el pago incluye el `qrId` y se muestra el resultado
+- **AND** exige validar el QR antes de continuar
+
+#### Scenario: Bloqueos y errores de la transferencia
+
+- **GIVEN** un cliente en el flujo de transferencia
+- **WHEN** ingresa un monto inválido o mayor al saldo, un código de validación incorrecto, rechaza en la confirmación, o el mock responde `409 INSUFFICIENT_FUNDS`, `410 QR_EXPIRED` u otro error
+- **THEN** no se crea el pago (o se informa el error con la acción sugerida) y puede reintentar o cancelar
+
 ### Requirement: Consola Angular básica para probar los servicios de onboarding
 
-El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejecutar y observar cada servicio del mock usado por esta historia, sin autenticación. Los servicios cubiertos son `GET /health`, `GET /scenarios`, `POST /kyc/verifications`, `GET /kyc/verifications/{id}`, `POST /kyc/verifications/{id}/decision`, `GET /wallets/{id}`, `GET /support/cases` y `POST /control/reset`. La consola DEBE tener tres zonas: configuración, flujo de onboarding guiado y consola de servicios.
+El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejecutar y observar cada servicio del mock usado por esta historia. Es la "Consola de pruebas", visible solo para el usuario `admin` tras iniciar sesión. Los servicios cubiertos son `GET /health`, `GET /scenarios`, `POST /kyc/verifications`, `GET /kyc/verifications/{id}`, `POST /kyc/verifications/{id}/decision`, `GET /wallets/{id}`, `GET /support/cases` y `POST /control/reset`. La consola DEBE tener tres zonas: configuración, flujo de onboarding guiado y consola de servicios.
 
 #### Scenario: Configuración de la URL base y la latencia
 
 - **GIVEN** un usuario que abre la consola
-- **WHEN** define la URL base del grupo (predeterminada en `environment.ts`, p. ej. `http://127.0.0.1:8787`) y, opcionalmente, una latencia de 0 a 5000 ms
-- **THEN** todas las llamadas usan esa URL base y envían la latencia en `X-Mock-Latency-Ms`
+- **WHEN** define la URL base del grupo (predeterminada en `environment.ts`, la URL del grupo en cloud; p. ej. `http://127.0.0.1:8787` en local) y, opcionalmente, una latencia de 0 a 5000 ms
+- **THEN** todas las llamadas usan esa URL base y envían la latencia en `X-Mock-Latency-Ms` cuando es mayor que 0 (el mock en nube no permite ese header en el preflight CORS)
 - **AND** un valor de latencia fuera de rango se bloquea en el cliente con un mensaje, sin llamar a la API
 
 #### Scenario: Comprobar disponibilidad y escenarios
@@ -228,7 +333,9 @@ El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejec
 - Los casos de soporte se cierran únicamente mediante la decisión KYC; no hay endpoint para editarlos.
 - Front Angular (`web/`) conforme a `docs/GOOD_PRACTICES.md`: tipado estricto sin `any`, interfaces para cada request y response, llamadas HTTP solo en servicios (no en componentes), URL base en `environment.ts`, sesión centralizada en un único servicio, sin `[innerHTML]` con datos dinámicos y mensajes de error que no exponen detalles internos.
 - La consola es una herramienta de prueba y demostración: no valida documentos reales ni sustituye la analítica de producción.
-- El alcance excluye pago por contacto o QR, recarga, validación de acceso en transporte, conciliación, reglas de KYC reales (se usa solo el KYC simulado) y despliegue multipaís.
+- Credenciales, OTP y código de validación son dummy y se comprueban en el cliente (`admin`/`admin`, OTP `0000`): no constituyen autenticación real y no deben usarse fuera de la demo. Los clientes registrados se guardan en el navegador con la contraseña derivada (PBKDF2 con sal), nunca en texto plano.
+- Los pagos y QR usan el contrato W2/W3 del mock (`POST /payments` con `Idempotency-Key`, `POST /payments/{id}/resolve`, `GET /payments`, `POST /qrs`, `POST /qrs/resolve`) sobre `wallet-demo`, `contact-demo` y `merchant-demo`; los movimientos no traen fecha.
+- El alcance excluye recarga, validación de acceso en transporte, conciliación, reversos, reglas de KYC reales (se usa solo el KYC simulado) y despliegue multipaís.
 
 ## Acceptance Evidence
 
@@ -242,6 +349,8 @@ El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejec
 - Consulta o reporte de la mediana de duración de la cohorte MVP en Perú.
 - Salida analítica mensual con nuevos usuarios activos y gasto de adquisición atribuido.
 - Resultado de `python tools/verify.py` y de los tests existentes sin regresiones.
+- Pruebas del registro (DNI de hasta 8 dígitos, OTP `0000` correcto e incorrecto), del inicio de sesión (`admin`/`admin`, cliente inexistente con "Ups, registrate como nuevo usuario") y del panel de saldo, movimientos y transferencias (contacto y QR, caminos felices y de error).
+- Validación manual en el navegador contra el mock del grupo: registro con OTP, acceso al panel, pago a contacto y pago con QR que actualizan saldo y movimientos.
 
 ## Open Questions (pendientes de revisión humana)
 
@@ -253,3 +362,5 @@ El sistema DEBE incluir un front básico en Angular (en `web/`) que permita ejec
 - ¿Qué significa "usuario activo" para el MAU y de qué fuente proviene el gasto de adquisición para el CAC?
 - ¿Se mide la mediana sobre el 100% de la cohorte MVP o sobre una muestra?
 - ¿Se confirma el listado de contratos protegidos derivado del repositorio?
+- ¿Cada cliente registrado debe tener su propia wallet en lugar de `wallet-demo`?
+- ¿El DNI debe tener exactamente 8 dígitos o basta con "máximo 8"? ¿Qué reglas de contraseña aplican además del mínimo de 4 caracteres?

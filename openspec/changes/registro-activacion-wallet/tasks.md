@@ -33,6 +33,8 @@
 - [x] 2.7 Consola de servicios: `GET /health`, `GET /scenarios`, `GET /support/cases`, ejecución individual, errores legibles y `POST /control/reset` con confirmación
 - [x] 2.8 Salida analítica mensual de nuevos usuarios activos y gasto atribuido
   - Fuente del gasto provisional: campo manual en la consola; la fuente real sigue abierta.
+  - Cambio de alcance (2026-11-06, pedido del usuario tras revisar la vista): `web/` ahora abre con login (DNI y contraseña; usuario dummy `admin`/`admin`) y un panel con saldo, últimos movimientos y transferencias (pago a contacto y pago con QR, con flujo de confirmación y código de validación). El flujo de onboarding y la consola de servicios pasaron a la sección "Consola de pruebas", visible solo para admin. `spec.md`, `design.md` y `proposal.md` se actualizaron el 2026-11-06 para reflejar este cambio.
+  - Ampliación (2026-11-06): antes del login hay una vista de registro (tipo de documento `DNI`; número solo dígitos, máximo 8; contraseña de al menos 4 caracteres) con OTP de aprobación dummy `0000`; al validarlo se guarda el cliente (contraseña derivada) y se entra al panel como `customer` (sin Consola de pruebas); luego puede iniciar sesión con su DNI y contraseña. En el login, un DNI distinto de `admin` muestra "Ups, registrate como nuevo usuario".
 
 ## 3. Pruebas
 
@@ -49,7 +51,8 @@ Cobertura básica por endpoint (camino feliz y un camino de error), según la ta
 - [x] 3.9 Manejador de errores común: `400`, `404`, `409`, `413`, `429` y `503` con mensaje accionable
 - [x] 3.10 Pasos visibles, bloqueo con dato faltante e inválido, y estado activo tras onboarding exitoso frente a incompleto, `PENDING` o `REJECTED`
 - [x] 3.11 Eventos (completo y abandonado) y cálculo de mediana
-  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 45 pruebas pasadas; `npx ng build` sin errores.
+  - Evidencia (2026-11-06): `npx ng test --watch=false` en `web/`: 4 archivos, 46 pruebas pasadas; `npx ng build` sin errores.
+  - Validación manual (2026-11-06) con `ng serve` en `http://localhost:4200` contra el mock del grupo 6: `GET /scenarios`, `POST /kyc/verifications` (`APPROVED` y `MANUAL_REVIEW`), `GET /wallets/{id}`, `GET /support/cases` y decisión `ACTIVE` (repetida: `200`) funcionan desde el navegador. Con latencia 300 ms el navegador bloquea `GET /health` por CORS (`x-mock-latency-ms` no permitido), como anticipaba el hallazgo de 1.4. Corregido un defecto: el flujo mostraba el estado de la última verificación creada desde la consola en lugar del de su propia wallet.
 - [ ] 3.12 Adjuntar al PR la salida real de las pruebas ejecutadas por una persona
 
 ## 4. Validación

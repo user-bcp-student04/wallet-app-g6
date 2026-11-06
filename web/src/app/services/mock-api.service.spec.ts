@@ -177,6 +177,46 @@ describe('MockApiService', () => {
     });
   });
 
+  describe('pagos y QR', () => {
+    const PAYMENT = { id: 'pay_1', wallet_id: 'wallet-demo', recipient: 'contact-demo', amount: 1500, status: 'PENDING', scenario: 'APPROVED', idem: 'k' };
+
+    it('POST /payments envía Idempotency-Key y devuelve 202', () => {
+      const box = collect(api.createPayment({ walletId: 'wallet-demo', recipient: 'contact-demo', amountCents: 1500, currency: 'PEN' }, 'key-1'));
+      const req = http.expectOne(`${BASE}/payments`);
+      expect(req.request.headers.get('Idempotency-Key')).toBe('key-1');
+      req.flush(PAYMENT, { status: 202, statusText: 'Accepted' });
+      expect(box.result?.status).toBe(202);
+    });
+
+    it('POST /payments con 409 INSUFFICIENT_FUNDS', () => {
+      const box = collect(api.createPayment({ walletId: 'wallet-demo', recipient: 'contact-demo', amountCents: 999999999, currency: 'PEN' }, 'key-2'));
+      http.expectOne(`${BASE}/payments`).flush({ error: 'INSUFFICIENT_FUNDS' }, { status: 409, statusText: 'Conflict' });
+      expect(describeError(box.result as ApiResult<unknown>).message).toContain('Saldo insuficiente');
+    });
+
+    it('POST /payments/{id}/resolve devuelve el pago resuelto', () => {
+      const box = collect(api.resolvePayment('pay_1'));
+      http.expectOne(`${BASE}/payments/pay_1/resolve`).flush({ ...PAYMENT, status: 'SUCCEEDED' });
+      expect(box.result?.body).toMatchObject({ status: 'SUCCEEDED' });
+    });
+
+    it('GET /payments filtra por walletId', () => {
+      const box = collect(api.listPayments('wallet-demo'));
+      http.expectOne(`${BASE}/payments?walletId=wallet-demo`).flush([PAYMENT]);
+      expect(box.result?.body).toHaveLength(1);
+    });
+
+    it('POST /qrs y POST /qrs/resolve', () => {
+      collect(api.createQr({ merchantId: 'merchant-demo' }));
+      http.expectOne(`${BASE}/qrs`).flush({ id: 'qr_1', payload: 'qrmock:qr_1', amountCents: null, currency: 'PEN' }, { status: 201, statusText: 'Created' });
+      const resolved = collect(api.resolveQr('qrmock:qr_1'));
+      const req = http.expectOne(`${BASE}/qrs/resolve`);
+      expect(req.request.body).toEqual({ payload: 'qrmock:qr_1' });
+      req.flush({ merchantId: 'merchant-demo', merchantName: 'Comercio de prueba', amountCents: null, currency: 'PEN' });
+      expect(resolved.result?.body?.merchantName).toBe('Comercio de prueba');
+    });
+  });
+
   describe('manejador de errores común', () => {
     it.each([
       [400, undefined, 'datos inválidos'],

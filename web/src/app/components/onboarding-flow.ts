@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ApiResult, Kyc, Wallet } from '../models/mock.models';
 import { MockApiService } from '../services/mock-api.service';
 import { OnboardingEventsService } from '../services/onboarding-events.service';
@@ -58,7 +58,7 @@ const DOCUMENT_PREFIX = 'TEST-';
               <dt>id</dt><dd>{{ kyc.id }}</dd>
               <dt>wallet_id</dt><dd>{{ kyc.wallet_id }}</dd>
               <dt>scenario</dt><dd>{{ kyc.scenario }}</dd>
-              <dt>status</dt><dd>{{ session.walletStatus() ?? kyc.status }}</dd>
+              <dt>status</dt><dd>{{ walletStatus() }}</dd>
             </dl>
           }
           @if (wallet(); as w) {
@@ -67,7 +67,7 @@ const DOCUMENT_PREFIX = 'TEST-';
               {{ w.currency }} (céntimos). La wallet nueva no tiene fondos y esta consola no ofrece recarga.
             </p>
           }
-          @switch (session.walletStatus()) {
+          @switch (walletStatus()) {
             @case ('ACTIVE') {
               <p>Tu cuenta está activa.</p>
             }
@@ -78,10 +78,10 @@ const DOCUMENT_PREFIX = 'TEST-';
               <p>La verificación está en revisión manual: falta una decisión del operador.</p>
             }
           }
-          <button type="button" [disabled]="session.walletStatus() !== 'ACTIVE'">
+          <button type="button" [disabled]="walletStatus() !== 'ACTIVE'">
             Ir a pagos de bajo monto
           </button>
-          @if (session.walletStatus() !== 'ACTIVE') {
+          @if (walletStatus() !== 'ACTIVE') {
             <p>El acceso a pagos está deshabilitado: solo una wallet ACTIVE puede pagar.</p>
           }
           <button type="button" (click)="restart()">Iniciar otro onboarding</button>
@@ -111,6 +111,12 @@ export class OnboardingFlow implements OnInit {
   protected readonly loading = signal(false);
   protected readonly verification = signal<Kyc | null>(null);
   protected readonly wallet = signal<Wallet | null>(null);
+  protected readonly walletStatus = computed(() => {
+    const kyc = this.verification();
+    if (!kyc) return null;
+    // La sesión guarda la última verificación creada; solo aplica si es la de este flujo.
+    return this.session.walletId() === kyc.wallet_id ? (this.session.walletStatus() ?? kyc.status) : kyc.status;
+  });
   private flowId = '';
 
   ngOnInit(): void {
